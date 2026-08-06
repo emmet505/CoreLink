@@ -1,0 +1,38 @@
+menu "Device Configuration"
+
+    config WIFI_DEFAULT_SSID
+        string "Default AP SSID"
+        default "ESP32-S3-AP"
+        help
+            Wi-Fi SSID used when no value is stored in NVS.
+
+    config WIFI_DEFAULT_PASSWORD
+        string "Default AP password"
+        default "12345678"
+        help
+            Wi-Fi password used when no value is stored in NVS.
+
+    config WIFI_DEFAULT_CHANNEL
+        int "Default AP channel"
+        range 1 13
+        default 1
+
+    config WIFI_DEFAULT_MAX_CONNECTIONS
+        int "Default max AP connections"
+        range 1 8
+        default 4
+
+    config WIFI_DEFAULT_IP
+        string "Default AP IP address"
+        default "192.168.4.1"
+
+    config WIFI_DEFAULT_GATEWAY
+        string "Default AP gateway"
+        default "192.168.4.1"
+
+    config HTTP_SERVER_PORT
+        int "Default HTTP server port"
+        range 1 65535
+        default 80
+
+endmenu

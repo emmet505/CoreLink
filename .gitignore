@@ -1,0 +1,70 @@
+# Build output
+build/
+bootloader-prefix/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+install_manifest.txt
+project_description.json
+hints.yml
+flasher_args.json
+
+# ESP-IDF generated files
+*.bin
+*.elf
+*.map
+*.hex
+*.log
+sdkconfig.old
+
+# Python / virtualenv
+*.pyc
+*.pyo
+__pycache__/
+venv/
+.venv/
+env/
+dist/
+*.egg-info/
+
+# C/C++ temp files
+*.o
+*.a
+*.out
+*.exe
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# IDE / editor files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.user
+*.workspace
+*.suo
+*.sln.docstates
+.vscode/
+.directory
+
+# ESP-IDF component manager / tool state
+components/
+managed_components/
+.espressif/
+
+# ESP-IDF dependencies
+/components/.idf/
+**/components/.idf/
+
+# CMake / language server
+compile_commands.json
+.clangd/
+.ccls-cache/
+
+
