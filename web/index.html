@@ -1,416 +1,337 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>ESP32-S3 &middot; Control Node</title>
-<!-- Empty data-URI favicon avoids a wasted /favicon.ico request to the device's HTTP server -->
-<link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32-S3 Device Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<div class="app">
+  <!-- ── Mobile top bar ──────────────────────────────────────────────────── -->
+  <div class="topbar" id="topbar">
+    <button class="topbar-menu-btn" id="menu-btn" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-brand">
+      <span style="color:var(--accent);font-size:1.1rem">⬡</span>
+      <span style="font-size:0.85rem;font-weight:700;color:#e8f0fa;letter-spacing:0.04em">ESP32-S3</span>
+    </div>
+    <span class="status-dot" id="topbar-status-dot"></span>
+  </div>
 
-  <!-- ============================================================
-       SIDEBAR NAVIGATION
-  ============================================================ -->
-  <nav class="sidebar" id="sidebar" aria-label="Primary">
-    <div class="sidebar__brand">
-      <span class="brand__badge" aria-hidden="true">S3</span>
-      <div class="brand__text">
-        <span class="brand__name">ESP32-S3</span>
-        <span class="brand__model">Control Node</span>
+  <!-- ── Sidebar overlay ──────────────────────────────────────────────────── -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">⬡</div>
+      <div class="brand-text">
+        <span class="brand-name">ESP32-S3</span>
+        <span class="brand-sub">Device Control</span>
       </div>
     </div>
 
-    <ul class="nav-list" role="list">
-      <li>
-        <button class="nav-link is-active" type="button" data-page="device-control" aria-current="page">
-          <svg class="nav-link__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/>
-            <line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/>
-            <line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="2"/>
-          </svg>
-          <span>Device Control</span>
-        </button>
+    <ul class="nav-list">
+      <li class="nav-item active" data-page="control">
+        <span class="nav-icon">⚡</span>
+        <span class="nav-label">Device Control</span>
       </li>
-      <li>
-        <button class="nav-link" type="button" data-page="settings">
-          <svg class="nav-link__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="3.2"/>
-            <path d="M12 2.5v3M12 18.5v3M4.2 6.2l2.1 2.1M17.7 15.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 17.8l2.1-2.1M17.7 8.3l2.1-2.1"/>
-          </svg>
-          <span>Settings</span>
-        </button>
+      <li class="nav-item" data-page="settings">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-label">Settings</span>
       </li>
     </ul>
 
-    <div class="sidebar__footer">
-      <div class="status-chip">
-        <span class="led led--sm led--on" id="sidebarConnLed" aria-hidden="true"></span>
-        <span id="sidebarConnText">Online</span>
+    <div class="sidebar-footer">
+      <div class="device-status">
+        <span class="status-dot" id="sidebar-status-dot"></span>
+        <span class="status-label" id="sidebar-status-label">Connecting…</span>
       </div>
-      <span class="sidebar__fw">firmware v1.0.0</span>
     </div>
   </nav>
 
-  <!-- Mobile drawer backdrop -->
-  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <!-- ── Main content ─────────────────────────────────────────────────────── -->
+  <main class="main" id="main">
 
-  <!-- ============================================================
-       MAIN AREA
-  ============================================================ -->
-  <div class="main">
+    <!-- ══ Device Control Page ══════════════════════════════════════════════ -->
+    <section class="page active" id="page-control">
 
-    <header class="topbar">
-      <button class="icon-btn topbar__menu" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-      </button>
-      <h1 class="topbar__title" id="pageTitle">Device Control</h1>
-      <div class="topbar__meta">
-        <span class="topbar__clock" id="deviceClock">00:00:00</span>
-      </div>
-    </header>
+      <header class="page-header">
+        <h1 class="page-title">Device Control</h1>
+        <p class="page-subtitle">Relay, peripherals, and live system status</p>
+      </header>
 
-    <main class="content">
+      <div class="grid">
 
-      <!-- ============================================================
-           PAGE 1 — DEVICE CONTROL
-      ============================================================ -->
-      <section class="page is-active" id="page-device-control" data-page="device-control" aria-labelledby="pageTitle">
-        <div class="page-grid">
-
-          <!-- Relay Control -->
-          <article class="card card--relay">
-            <div class="card__header">
-              <div>
-                <span class="eyebrow">Relay Control</span>
-                <h2 class="card__title">Main Relay</h2>
-              </div>
-              <span class="led led--lg" id="relayLed" aria-hidden="true"></span>
-            </div>
-
-            <div class="relay-body">
-              <div class="relay-status">
-                <span class="relay-status__label">Status</span>
-                <span class="relay-status__value is-off" id="relayStatusText">OFF</span>
-              </div>
-              <button class="switch switch--xl" id="relayToggle" type="button" role="switch" aria-checked="false" aria-label="Toggle main relay" data-control="relay">
-                <span class="switch__track"><span class="switch__thumb"></span></span>
-              </button>
-            </div>
-
-            <p class="card__hint">Simulated locally &mdash; will call <code>POST /api/relay</code></p>
-          </article>
-
-          <!-- Quick Controls -->
-          <article class="card card--controls">
-            <div class="card__header">
-              <div>
-                <span class="eyebrow">Peripherals</span>
-                <h2 class="card__title">Quick Controls</h2>
-              </div>
-            </div>
-
-            <div class="control-grid">
-
-              <div class="control-item">
-                <span class="control-item__icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9v.2h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3z"/>
-                  </svg>
-                </span>
-                <span class="control-item__body">
-                  <span class="control-item__label">LED</span>
-                  <span class="control-item__state" data-state-for="led">OFF</span>
-                </span>
-                <button class="switch" type="button" role="switch" aria-checked="false" aria-label="Toggle LED" data-control="led">
-                  <span class="switch__track"><span class="switch__thumb"></span></span>
-                </button>
-              </div>
-
-              <div class="control-item">
-                <span class="control-item__icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="1.5"/>
-                    <path d="M12 10.5c-.3-3-1.6-5.2-3.8-5.4-1.7-.2-2.7 1.4-1.8 2.9.9 1.5 2.9 2.3 5.6 2.5"/>
-                    <path d="M13.5 12c3-.3 5.2-1.6 5.4-3.8.2-1.7-1.4-2.7-2.9-1.8-1.5.9-2.3 2.9-2.5 5.6"/>
-                    <path d="M12 13.5c.3 3 1.6 5.2 3.8 5.4 1.7.2 2.7-1.4 1.8-2.9-.9-1.5-2.9-2.3-5.6-2.5"/>
-                  </svg>
-                </span>
-                <span class="control-item__body">
-                  <span class="control-item__label">Fan</span>
-                  <span class="control-item__state" data-state-for="fan">OFF</span>
-                </span>
-                <button class="switch" type="button" role="switch" aria-checked="false" aria-label="Toggle fan" data-control="fan">
-                  <span class="switch__track"><span class="switch__thumb"></span></span>
-                </button>
-              </div>
-
-              <div class="control-item">
-                <span class="control-item__icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="4"/>
-                    <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
-                    <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
-                    <line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/>
-                    <line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/>
-                  </svg>
-                </span>
-                <span class="control-item__body">
-                  <span class="control-item__label">Light</span>
-                  <span class="control-item__state" data-state-for="light">OFF</span>
-                </span>
-                <button class="switch" type="button" role="switch" aria-checked="false" aria-label="Toggle light" data-control="light">
-                  <span class="switch__track"><span class="switch__thumb"></span></span>
-                </button>
-              </div>
-
-              <div class="control-item">
-                <span class="control-item__icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M4 12a8 8 0 0 1 13.9-5.4M20 12a8 8 0 0 1-13.9 5.4"/>
-                    <path d="M17.5 3.5v3.5H14M6.5 20.5V17H10"/>
-                  </svg>
-                </span>
-                <span class="control-item__body">
-                  <span class="control-item__label">Auto Mode</span>
-                  <span class="control-item__state" data-state-for="auto">OFF</span>
-                </span>
-                <button class="switch" type="button" role="switch" aria-checked="false" aria-label="Toggle automatic mode" data-control="auto">
-                  <span class="switch__track"><span class="switch__thumb"></span></span>
-                </button>
-              </div>
-
-            </div>
-          </article>
-
-          <!-- Emergency Stop -->
-          <article class="card card--estop" id="estopCard">
-            <div class="card__header">
-              <div>
-                <span class="eyebrow">Safety</span>
-                <h2 class="card__title">Emergency Stop</h2>
-              </div>
-            </div>
-            <p class="card__desc">Immediately disables every output on this device. Clear the stop to resume normal operation.</p>
-
-            <button class="estop-btn" id="estopBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polygon points="8 2 16 2 22 8 22 16 16 22 8 22 2 16 2 8"/>
-                <line x1="12" y1="7" x2="12" y2="13"/><line x1="12" y1="16.6" x2="12" y2="16.7"/>
-              </svg>
-              <span>Emergency Stop</span>
-            </button>
-
-            <div class="estop-banner" id="estopBanner" hidden>
-              <span>Emergency stop engaged &mdash; all outputs disabled.</span>
-              <button class="btn btn--ghost btn--sm" id="estopClear" type="button">Clear Stop</button>
-            </div>
-          </article>
-
-          <!-- System Status -->
-          <article class="card card--status">
-            <div class="card__header">
-              <div>
-                <span class="eyebrow">Telemetry</span>
-                <h2 class="card__title">System Status</h2>
-              </div>
-            </div>
-
-            <div class="status-grid">
-              <div class="status-metric">
-                <span class="status-metric__label">Connection</span>
-                <div class="status-metric__value-row">
-                  <span class="led led--sm led--on" id="statusConnLed" aria-hidden="true"></span>
-                  <span class="status-metric__value" id="statusConnText">Online</span>
-                </div>
-              </div>
-
-              <div class="status-metric">
-                <span class="status-metric__label">Uptime</span>
-                <span class="status-metric__value status-metric__value--mono" id="statusUptime">00:00:00</span>
-              </div>
-
-              <div class="status-metric">
-                <span class="status-metric__label">Temperature</span>
-                <span class="status-metric__value status-metric__value--mono" id="statusTemp">&mdash;&deg;C</span>
-              </div>
-
-              <div class="status-metric">
-                <span class="status-metric__label">CPU Usage</span>
-                <span class="status-metric__value status-metric__value--mono" id="statusCpuText">&mdash;%</span>
-                <div class="gauge"><div class="gauge__fill" id="statusCpuGauge"></div></div>
-              </div>
-
-              <div class="status-metric">
-                <span class="status-metric__label">Memory Usage</span>
-                <span class="status-metric__value status-metric__value--mono" id="statusMemText">&mdash;%</span>
-                <div class="gauge"><div class="gauge__fill" id="statusMemGauge"></div></div>
-              </div>
-            </div>
-          </article>
-
+        <!-- Relay Control -->
+        <div class="card card--accent">
+          <div class="card-header">
+            <span class="card-title">Main Relay</span>
+            <span class="relay-badge" id="relay-badge">OFF</span>
+          </div>
+          <p class="card-desc">Controls the primary output relay. Changes take effect immediately.</p>
+          <div class="relay-controls">
+            <button class="btn btn--primary" id="btn-relay-on">Turn ON</button>
+            <button class="btn btn--ghost"   id="btn-relay-off">Turn OFF</button>
+          </div>
+          <div class="relay-indicator" id="relay-indicator"></div>
         </div>
-      </section>
 
-      <!-- ============================================================
-           PAGE 2 — SETTINGS
-      ============================================================ -->
-      <section class="page" id="page-settings" data-page="settings" aria-labelledby="pageTitle">
-        <div class="page-grid page-grid--single">
-
-          <form class="card card--form" id="settingsForm" novalidate>
-            <div class="card__header">
-              <div>
-                <span class="eyebrow">Network</span>
-                <h2 class="card__title">Network Settings</h2>
-              </div>
-            </div>
-
-            <fieldset class="form-fieldset">
-              <legend>Wi-Fi Credentials</legend>
-              <div class="form-grid">
-                <div class="field">
-                  <label for="ssid">SSID</label>
-                  <input type="text" id="ssid" name="ssid" placeholder="MyHomeNetwork" maxlength="32" required autocomplete="off">
-                  <span class="field__hint">Network name, up to 32 characters.</span>
-                </div>
-
-                <div class="field">
-                  <label for="password">Password</label>
-                  <div class="input-with-action">
-                    <input type="password" id="password" name="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" minlength="8" maxlength="64" required autocomplete="new-password">
-                    <button type="button" class="input-action" id="togglePassword" aria-label="Show password">
-                      <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/>
-                      </svg>
-                      <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
-                        <path d="M3 3l18 18"/>
-                        <path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c7 0 10.5 7 10.5 7a13.5 13.5 0 0 1-3.1 4.1M6.4 6.4C3.6 8.1 1.5 12 1.5 12s3.5 7 10.5 7c1.4 0 2.6-.3 3.7-.7"/>
-                        <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <span class="field__hint">Minimum 8 characters.</span>
-                </div>
-              </div>
-            </fieldset>
-
-            <fieldset class="form-fieldset">
-              <legend>IP Configuration</legend>
-
-              <label class="field-switch">
-                <span>
-                  <span class="field-switch__label">Use Static IP</span>
-                  <span class="field__hint">Off uses DHCP from your router instead.</span>
-                </span>
-                <button type="button" class="switch" id="staticIpToggle" role="switch" aria-checked="false" aria-label="Use static IP" data-control="staticIp">
-                  <span class="switch__track"><span class="switch__thumb"></span></span>
-                </button>
+        <!-- Peripherals -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Peripherals</span>
+          </div>
+          <ul class="toggle-list">
+            <li class="toggle-row">
+              <span class="toggle-label">Status LED</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="tog-led" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
               </label>
-
-              <div class="form-grid" id="staticIpFields">
-                <div class="field">
-                  <label for="staticIp">Static IP</label>
-                  <input type="text" id="staticIp" name="staticIp" placeholder="192.168.1.100" inputmode="decimal"
-                    pattern="^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$" disabled>
-                  <span class="field__hint">IPv4 format, e.g. 192.168.1.100</span>
-                </div>
-                <div class="field">
-                  <label for="gateway">Gateway</label>
-                  <input type="text" id="gateway" name="gateway" placeholder="192.168.1.1" inputmode="decimal"
-                    pattern="^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$" disabled>
-                  <span class="field__hint">Router / gateway address.</span>
-                </div>
-                <div class="field">
-                  <label for="netmask">Netmask</label>
-                  <input type="text" id="netmask" name="netmask" placeholder="255.255.255.0" inputmode="decimal"
-                    pattern="^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$" disabled>
-                  <span class="field__hint">Subnet mask.</span>
-                </div>
-              </div>
-            </fieldset>
-
-            <fieldset class="form-fieldset">
-              <legend>HTTP Server</legend>
-              <div class="form-grid">
-                <div class="field">
-                  <label for="httpPort">HTTP Server Port</label>
-                  <input type="number" id="httpPort" name="httpPort" min="1" max="65535" value="80" required>
-                  <span class="field__hint">1&ndash;65535. Default 80.</span>
-                </div>
-                <div class="field">
-                  <label for="maxConn">Maximum Connections</label>
-                  <input type="number" id="maxConn" name="maxConn" min="1" max="16" value="4" required>
-                  <span class="field__hint">1&ndash;16 concurrent clients.</span>
-                </div>
-              </div>
-            </fieldset>
-
-            <div class="card__actions">
-              <button type="button" class="btn btn--ghost" id="cancelSettings">Cancel</button>
-              <button type="submit" class="btn btn--primary" id="saveSettings">Save Changes</button>
-            </div>
-          </form>
-
-          <article class="card card--danger-zone">
-            <div class="card__header">
-              <div>
-                <span class="eyebrow">Maintenance</span>
-                <h2 class="card__title">Device Management</h2>
-              </div>
-            </div>
-            <p class="card__desc">These actions affect the entire device. Proceed with care.</p>
-
-            <div class="danger-actions">
-              <button class="btn btn--warning btn--block" id="restartBtn" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 4v5h5"/><path d="M4.5 9A8 8 0 1 1 6 16.5"/>
-                </svg>
-                Restart Device
-              </button>
-              <button class="btn btn--danger btn--block" id="factoryResetBtn" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="3.5 6 5.2 6 20.5 6"/>
-                  <path d="M8.2 6V4.2c0-.7.5-1.2 1.2-1.2h5.2c.7 0 1.2.5 1.2 1.2V6"/>
-                  <path d="M6.7 6l.9 13c.05.9.8 1.6 1.7 1.6h5.4c.9 0 1.65-.7 1.7-1.6l.9-13"/>
-                  <line x1="10.2" y1="10" x2="10.2" y2="17"/><line x1="13.8" y1="10" x2="13.8" y2="17"/>
-                </svg>
-                Factory Reset
-              </button>
-            </div>
-          </article>
-
+            </li>
+            <li class="toggle-row">
+              <span class="toggle-label">Cooling Fan</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="tog-fan" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </li>
+            <li class="toggle-row">
+              <span class="toggle-label">Ambient Light</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="tog-light" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </li>
+            <li class="toggle-row">
+              <span class="toggle-label">Auto Mode</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="tog-auto" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </li>
+          </ul>
         </div>
-      </section>
 
-    </main>
-  </div>
-</div>
+        <!-- Telemetry Card -->
+        <div class="card telemetry-card" id="telemetry-card">
+          <div class="card-header">
+            <span class="card-title">System Status</span>
+            <span class="status-dot" id="telemetry-status-dot"></span>
+          </div>
 
-<!-- ============================================================
-     TOAST NOTIFICATIONS
-============================================================ -->
-<div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+          <!-- ── Heap ─────────────────────────────────────────────────── -->
+          <div class="tel-section-label">Heap (total)</div>
+          <div class="telemetry-grid">
+            <div class="telemetry-group">
+              <div class="telemetry-label">Total</div>
+              <div class="telemetry-value mono" id="tel-heap-total">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Free</div>
+              <div class="telemetry-value mono" id="tel-heap-free">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Used</div>
+              <div class="telemetry-value mono" id="tel-heap-used">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Min Free</div>
+              <div class="telemetry-value mono" id="tel-heap-min-free">—</div>
+            </div>
+            <div class="telemetry-group telemetry-group--wide">
+              <div class="telemetry-label">
+                Usage
+                <span class="telemetry-pct mono" id="tel-heap-usage">—</span>
+              </div>
+              <div class="telemetry-bar-wrap">
+                <div class="telemetry-bar" id="tel-heap-bar"></div>
+              </div>
+            </div>
+          </div>
 
-<!-- ============================================================
-     CONFIRMATION MODAL (reused for Restart / Factory Reset)
-============================================================ -->
-<div class="modal-backdrop" id="modalBackdrop">
-  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage">
-    <h2 class="modal__title" id="modalTitle">Confirm action</h2>
-    <p class="modal__message" id="modalMessage">Are you sure?</p>
-    <div class="modal__actions">
-      <button class="btn btn--ghost" id="modalCancel" type="button">Cancel</button>
-      <button class="btn btn--danger" id="modalConfirm" type="button">Confirm</button>
+          <!-- ── Internal RAM ──────────────────────────────────────────── -->
+          <div class="tel-section-label">Internal RAM</div>
+          <div class="telemetry-grid">
+            <div class="telemetry-group">
+              <div class="telemetry-label">Total</div>
+              <div class="telemetry-value mono" id="tel-iram-total">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Free</div>
+              <div class="telemetry-value mono" id="tel-iram-free">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Used</div>
+              <div class="telemetry-value mono" id="tel-iram-used">—</div>
+            </div>
+            <div class="telemetry-group telemetry-group--wide">
+              <div class="telemetry-label">
+                Usage
+                <span class="telemetry-pct mono" id="tel-iram-usage">—</span>
+              </div>
+              <div class="telemetry-bar-wrap">
+                <div class="telemetry-bar" id="tel-iram-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── PSRAM ─────────────────────────────────────────────────── -->
+          <div class="tel-section-label">PSRAM</div>
+          <div class="telemetry-grid">
+            <div class="telemetry-group">
+              <div class="telemetry-label">Total</div>
+              <div class="telemetry-value mono" id="tel-psram-total">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Free</div>
+              <div class="telemetry-value mono" id="tel-psram-free">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Used</div>
+              <div class="telemetry-value mono" id="tel-psram-used">—</div>
+            </div>
+            <div class="telemetry-group telemetry-group--wide">
+              <div class="telemetry-label">
+                Usage
+                <span class="telemetry-pct mono" id="tel-psram-usage">—</span>
+              </div>
+              <div class="telemetry-bar-wrap">
+                <div class="telemetry-bar" id="tel-psram-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Device info ────────────────────────────────────────────── -->
+          <div class="tel-section-label">Device</div>
+          <div class="telemetry-grid telemetry-grid--device">
+            <div class="telemetry-group">
+              <div class="telemetry-label">CPU Cores</div>
+              <div class="telemetry-value mono" id="tel-cpu-cores">—</div>
+            </div>
+            <div class="telemetry-group">
+              <div class="telemetry-label">Flash Size</div>
+              <div class="telemetry-value mono" id="tel-flash-size">—</div>
+            </div>
+            <div class="telemetry-group telemetry-group--wide telemetry-group--uptime">
+              <div class="telemetry-label">Uptime</div>
+              <div class="telemetry-value telemetry-value--uptime mono" id="tel-uptime">—</div>
+            </div>
+          </div>
+
+          <div class="telemetry-footer">
+            Last updated: <span class="mono" id="tel-last-updated">never</span>
+          </div>
+        </div>
+
+        <!-- Emergency Stop -->
+        <div class="card card--danger">
+          <div class="card-header">
+            <span class="card-title">Emergency Stop</span>
+          </div>
+          <p class="card-desc">Immediately cuts power to all outputs. No confirmation required.</p>
+          <button class="btn btn--estop" id="btn-estop">⬛ EMERGENCY STOP</button>
+        </div>
+
+      </div><!-- /grid -->
+    </section>
+
+    <!-- ══ Settings Page ════════════════════════════════════════════════════ -->
+    <section class="page" id="page-settings">
+
+      <header class="page-header">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Network configuration and device management</p>
+      </header>
+
+      <div class="grid">
+
+        <!-- Network Config -->
+        <div class="card card--wide">
+          <div class="card-header">
+            <span class="card-title">Network Configuration</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="inp-ssid">Wi-Fi SSID</label>
+            <input class="field-input" type="text" id="inp-ssid" placeholder="Network name" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inp-pass">Wi-Fi Password</label>
+            <input class="field-input" type="password" id="inp-pass" placeholder="••••••••" />
+          </div>
+
+          <!-- DHCP toggle -->
+          <div class="toggle-row toggle-row--field">
+            <span class="field-label">Use DHCP</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="tog-dhcp" checked />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <!-- Static IP fields (hidden when DHCP on) -->
+          <div class="static-ip-fields" id="static-ip-fields">
+            <div class="field-group">
+              <label class="field-label" for="inp-ip">Static IP</label>
+              <input class="field-input mono" type="text" id="inp-ip" placeholder="192.168.1.100" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="inp-mask">Subnet Mask</label>
+              <input class="field-input mono" type="text" id="inp-mask" placeholder="255.255.255.0" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="inp-gw">Gateway</label>
+              <input class="field-input mono" type="text" id="inp-gw" placeholder="192.168.1.1" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="inp-dns">DNS Server</label>
+              <input class="field-input mono" type="text" id="inp-dns" placeholder="8.8.8.8" />
+            </div>
+          </div>
+
+          <div class="field-error" id="settings-error"></div>
+
+          <div class="card-actions">
+            <button class="btn btn--primary" id="btn-save-settings">Save Settings</button>
+          </div>
+        </div>
+
+        <!-- Device Actions -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Device Actions</span>
+          </div>
+          <p class="card-desc">Restart applies saved settings. Factory reset clears all configuration.</p>
+          <div class="action-list">
+            <button class="btn btn--ghost btn--block" id="btn-reboot">↺ Restart Device</button>
+            <button class="btn btn--danger btn--block" id="btn-factory">⚠ Factory Reset</button>
+          </div>
+        </div>
+
+      </div><!-- /grid -->
+    </section>
+
+  </main>
+
+  <!-- ── Confirm Modal ─────────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" id="modal">
+      <div class="modal-title" id="modal-title">Confirm Action</div>
+      <div class="modal-body"  id="modal-body">Are you sure?</div>
+      <div class="modal-actions">
+        <button class="btn btn--ghost"    id="modal-cancel">Cancel</button>
+        <button class="btn btn--primary"  id="modal-confirm">Confirm</button>
+      </div>
     </div>
   </div>
-</div>
 
-<script src="script.js"></script>
+  <!-- ── Toast ─────────────────────────────────────────────────────────────── -->
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
 </body>
 </html>

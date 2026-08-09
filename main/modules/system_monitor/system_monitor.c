@@ -1,10 +1,13 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "system_monitor.h"
 
 #include "esp_chip_info.h"
+#include "esp_flash.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_psram.h"
-#include "esp_flash.h"
 #include "esp_system.h"
 
 
@@ -23,14 +26,20 @@ void system_monitor_get_status(system_status_t* status) {
     return;
   }
 
+  /* General Heap */
+
   status->free_heap = esp_get_free_heap_size();
 
   status->total_heap = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
 
+  status->used_heap = status->total_heap - status->free_heap;
+
   status->minimum_free_heap = esp_get_minimum_free_heap_size();
 
   status->heap_usage =
-      100.0f - ((float)status->free_heap * 100.0f / (float)status->total_heap);
+      ((float)status->used_heap * 100.0f) / (float)status->total_heap;
+
+  /* CPU / Chip */
 
   esp_chip_info_t chip_info;
   esp_chip_info(&chip_info);
@@ -38,15 +47,39 @@ void system_monitor_get_status(system_status_t* status) {
   status->cpu_cores = chip_info.cores;
   status->chip_revision = chip_info.revision;
 
-  status->internal_ram_size = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+  /* Internal RAM Heap */
 
-  status->psram_size = esp_psram_get_size();
+  status->internal_heap_total = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
 
-  uint32_t flash_size = 0;
-  if (esp_flash_get_size(NULL, &flash_size) == ESP_OK) {
-    status->flash_size = flash_size;
+  status->internal_heap_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+
+  status->internal_heap_used =
+      status->internal_heap_total - status->internal_heap_free;
+
+  status->internal_heap_usage = ((float)status->internal_heap_used * 100.0f) /
+                                (float)status->internal_heap_total;
+
+  /* PSRAM */
+
+  status->psram_total = esp_psram_get_size();
+
+  status->psram_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+
+  status->psram_used = status->psram_total - status->psram_free;
+
+  if (status->psram_total > 0) {
+    status->psram_usage =
+        ((float)status->psram_used * 100.0f) / (float)status->psram_total;
   } else {
-    status->flash_size = 0; // Unable to get flash size
+    status->psram_usage = 0;
   }
 
+  /* Flash */
+
+  uint32_t flash_size = 0;
+  status->flash_size =
+      (esp_flash_get_size(NULL, &flash_size) == ESP_OK) ? flash_size : 0;
+
+  /* system */
+  status->uptime_seconds = (uint64_t)(esp_timer_get_time() / 1000000ULL);
 }

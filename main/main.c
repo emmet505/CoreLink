@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "esp_event.h"
 #include "esp_log.h"
@@ -13,11 +14,17 @@
 
 static const char* TAG = "APP";
 
+static void monitor_task(void* pvParameters);
+
+
 static void monitor_task(void* pvParameters) {
+
   while (1) {
     int clients = wifi_get_connected_clients();
-    ESP_LOGI(TAG, "Connected clients: %d", clients);
-    vTaskDelay(pdMS_TO_TICKS(30000));
+    ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients,
+             xPortGetCoreID());
+    vTaskDelay(pdMS_TO_TICKS(15000));
+    
   }
 }
 
@@ -46,22 +53,29 @@ void app_main(void) {
   ESP_ERROR_CHECK(http_server_start());
 
   xTaskCreate(monitor_task, "monitor", 2048, NULL, tskIDLE_PRIORITY, NULL);
+
   ESP_LOGI(TAG, "Monitor task started");
 
   ESP_LOGI(TAG, "Device is ready");
+  ESP_LOGI(TAG, "CPU cores available: %d", portNUM_PROCESSORS);
 
   // system_monitor_print();
-  system_status_t status;
-  system_monitor_get_status(&status);
-  ESP_LOGI(TAG, "Free Heap      : %u", status.free_heap);
-  ESP_LOGI(TAG, "Total Heap     : %u", status.total_heap);
-  ESP_LOGI(TAG, "Min Free Heap  : %u", status.minimum_free_heap);
-  ESP_LOGI(TAG, "Heap Usage     : %.1f %%", status.heap_usage);
+  // system_status_t status;
+  // system_monitor_get_status(&status);
+  // ESP_LOGI(TAG, "Free Heap      : %u", status.free_heap);
+  // ESP_LOGI(TAG, "Total Heap     : %u", status.total_heap);
+  // ESP_LOGI(TAG, "Min Free Heap  : %u", status.minimum_free_heap);
+  // ESP_LOGI(TAG, "Heap Usage     : %.1f %%", status.heap_usage);
 
-  ESP_LOGI(TAG, "CPU Cores      : %lu", status.cpu_cores);
+  // ESP_LOGI(TAG, "CPU Cores      : %lu", status.cpu_cores);
 
-  ESP_LOGI(TAG, "Internal RAM   : %u KB", status.internal_ram_size / 1024);
+  // ESP_LOGI(TAG, "Internal RAM   : %u KB", status.internal / 1024);
 
-  ESP_LOGI(TAG, "PSRAM          : %zu KB", status.psram_size / 1024);
-  ESP_LOGI(TAG, "Flash_size     : %zu KB ", status.flash_size / 1024);
+  // ESP_LOGI(TAG, "PSRAM          : %zu KB", status.psram_size / 1024);
+  // ESP_LOGI(TAG, "Flash_size     : %zu KB ", status.flash_size / 1024);
 }
+
+// static void test_runtime_stats(void) {
+//   UBaseType_t task_count = uxTaskGetNumberOfTasks();
+//   ESP_LOGI(TAG, "Number of tasks: %u", (unsigned)task_count);
+// }

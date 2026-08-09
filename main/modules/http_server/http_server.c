@@ -120,14 +120,29 @@ static esp_err_t status_api_handler(httpd_req_t* req) {
     httpd_resp_send_500(req);
     return ESP_FAIL;
   }
-  cJSON_AddNumberToObject(root, "free_heap", status.free_heap);
-  cJSON_AddNumberToObject(root, "total_heap", status.total_heap);
-  cJSON_AddNumberToObject(root, "min_free_heap", status.minimum_free_heap);
-  cJSON_AddNumberToObject(root, "internal_ram_size", status.internal_ram_size);
+  cJSON_AddNumberToObject(root, "heap_total", status.total_heap);
+  cJSON_AddNumberToObject(root, "heap_free", status.free_heap);
+  cJSON_AddNumberToObject(root, "heap_used", status.used_heap);
+  cJSON_AddNumberToObject(root, "heap_min_free", status.minimum_free_heap);
   cJSON_AddNumberToObject(root, "heap_usage", status.heap_usage);
-  cJSON_AddNumberToObject(root, "psram", status.psram_size);
+
+  cJSON_AddNumberToObject(root, "internal_heap_total",
+                          status.internal_heap_total);
+  cJSON_AddNumberToObject(root, "internal_heap_free",
+                          status.internal_heap_free);
+  cJSON_AddNumberToObject(root, "internal_heap_used",
+                          status.internal_heap_used);
+  cJSON_AddNumberToObject(root, "internal_heap_usage",
+                          status.internal_heap_usage);
+
+  cJSON_AddNumberToObject(root, "psram_total", status.psram_total);
+  cJSON_AddNumberToObject(root, "psram_free", status.psram_free);
+  cJSON_AddNumberToObject(root, "psram_used", status.psram_used);
+  cJSON_AddNumberToObject(root, "psram_usage", status.psram_usage);
+
   cJSON_AddNumberToObject(root, "cpu_cores", status.cpu_cores);
   cJSON_AddNumberToObject(root, "flash_size", status.flash_size);
+  cJSON_AddNumberToObject(root,"uptime_seconds",status.uptime_seconds);
 
   char* json = cJSON_PrintUnformatted(root);
   cJSON_Delete(root);
