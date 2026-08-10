@@ -74,16 +74,22 @@ esp_err_t wifi_config_load(wifi_config_store_t* out_cfg) {
     return ESP_OK;
   }
 
-  size_t size = sizeof(out_cfg->ssid);
+  size_t size;
+
+  size = sizeof(out_cfg->ssid);
   err = nvs_get_str(handle, KEY_SSID, out_cfg->ssid, &size);
-  if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    snprintf(out_cfg->ssid, sizeof(out_cfg->ssid), "%s", CONFIG_WIFI_DEFAULT_SSID);
+  } else if (err != ESP_OK) {
     nvs_close(handle);
     return err;
   }
 
   size = sizeof(out_cfg->password);
   err = nvs_get_str(handle, KEY_PASSWORD, out_cfg->password, &size);
-  if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    snprintf(out_cfg->password, sizeof(out_cfg->password), "%s", CONFIG_WIFI_DEFAULT_PASSWORD);
+  } else if (err != ESP_OK) {
     nvs_close(handle);
     return err;
   }
@@ -92,31 +98,41 @@ esp_err_t wifi_config_load(wifi_config_store_t* out_cfg) {
   err = nvs_get_u8(handle, KEY_CHANNEL, &channel);
   if (err == ESP_OK) {
     out_cfg->channel = channel;
+  } else {
+    out_cfg->channel = CONFIG_WIFI_DEFAULT_CHANNEL;
   }
 
   uint8_t max_connections = 0;
   err = nvs_get_u8(handle, KEY_MAX_CONNECTIONS, &max_connections);
   if (err == ESP_OK) {
     out_cfg->max_connections = max_connections;
+  } else {
+    out_cfg->max_connections = CONFIG_WIFI_DEFAULT_MAX_CONNECTIONS;
   }
 
   size = sizeof(out_cfg->ip);
   err = nvs_get_str(handle, KEY_IP, out_cfg->ip, &size);
-  if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    snprintf(out_cfg->ip, sizeof(out_cfg->ip), "%s", CONFIG_WIFI_DEFAULT_IP);
+  } else if (err != ESP_OK) {
     nvs_close(handle);
     return err;
   }
 
   size = sizeof(out_cfg->gateway);
   err = nvs_get_str(handle, KEY_GATEWAY, out_cfg->gateway, &size);
-  if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    snprintf(out_cfg->gateway, sizeof(out_cfg->gateway), "%s", CONFIG_WIFI_DEFAULT_GATEWAY);
+  } else if (err != ESP_OK) {
     nvs_close(handle);
     return err;
   }
 
   size = sizeof(out_cfg->netmask);
   err = nvs_get_str(handle, KEY_NETMASK, out_cfg->netmask, &size);
-  if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    snprintf(out_cfg->netmask, sizeof(out_cfg->netmask), "%s", CONFIG_WIFI_DEFAULT_NETMASK);
+  } else if (err != ESP_OK) {
     nvs_close(handle);
     return err;
   }

@@ -79,6 +79,38 @@
           <div class="relay-indicator" id="relay-indicator"></div>
         </div>
 
+        <!-- Relay Schedule -->
+        <div class="card card--accent" id="schedule-card">
+          <div class="card-header">
+            <span class="card-title">Relay Schedule</span>
+            <span class="schedule-badge" id="schedule-badge">OFF</span>
+          </div>
+          <p class="card-desc">Set a daily on/off window. The relay will switch automatically based on device time.</p>
+
+          <div class="schedule-row">
+            <div class="field-group">
+              <label class="field-label" for="inp-schedule-start">Start Time</label>
+              <input class="field-input mono" type="time" id="inp-schedule-start" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="inp-schedule-stop">Stop Time</label>
+              <input class="field-input mono" type="time" id="inp-schedule-stop" />
+            </div>
+          </div>
+
+          <div class="toggle-row toggle-row--field" style="margin-top:0.25rem">
+            <span class="field-label">Enable Schedule</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="tog-schedule" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="card-actions">
+            <button class="btn btn--primary" id="btn-save-schedule">Apply Schedule</button>
+          </div>
+        </div>
+
         <!-- Peripherals -->
         <div class="card">
           <div class="card-header">
@@ -262,6 +294,17 @@
           <div class="field-group">
             <label class="field-label" for="inp-pass">Wi-Fi Password</label>
             <input class="field-input" type="password" id="inp-pass" placeholder="••••••••" />
+          </div>
+
+          <div class="settings-row">
+            <div class="field-group">
+              <label class="field-label" for="inp-channel">Channel (1–13)</label>
+              <input class="field-input mono" type="number" id="inp-channel" min="1" max="13" placeholder="1" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="inp-max-conn">Max Connections (1–10)</label>
+              <input class="field-input mono" type="number" id="inp-max-conn" min="1" max="10" placeholder="4" />
+            </div>
           </div>
 
           <!-- DHCP toggle -->

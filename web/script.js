@@ -33,12 +33,19 @@ const API = {
 
   // ── Convenience methods ───────────────────────────────────────────────────
   getStatus()        { return API.request('/api/status'); },
+  getSettings()      { return API.request('/api/settings'); },
   setRelay(state)    { return API.request('/api/relay',    { method: 'POST', body: JSON.stringify({ state }) }); },
   setPeripheral(k,v) { return API.request('/api/peripheral', { method: 'POST', body: JSON.stringify({ [k]: v }) }); },
   emergencyStop()    { return API.request('/api/estop',    { method: 'POST' }); },
   saveSettings(data) { return API.request('/api/settings', { method: 'POST', body: JSON.stringify(data) }); },
   reboot()           { return API.request('/api/reboot',   { method: 'POST' }); },
   factoryReset()     { return API.request('/api/factory',  { method: 'POST' }); },
+
+  /**
+   * Send relay schedule + current browser time so firmware can sync.
+   * @param {{ enabled: bool, start: string, stop: string, device_time: string }} data
+   */
+  setSchedule(data)  { return API.request('/api/relay/schedule', { method: 'POST', body: JSON.stringify(data) }); },
 };
 
 
@@ -110,9 +117,19 @@ function cacheDom() {
   $.telFlashSize     = document.getElementById('tel-flash-size');
   $.telUptime        = document.getElementById('tel-uptime');
 
+  // Relay schedule
+  $.scheduleCard      = document.getElementById('schedule-card');
+  $.scheduleBadge     = document.getElementById('schedule-badge');
+  $.inpScheduleStart  = document.getElementById('inp-schedule-start');
+  $.inpScheduleStop   = document.getElementById('inp-schedule-stop');
+  $.togSchedule       = document.getElementById('tog-schedule');
+  $.btnSaveSchedule   = document.getElementById('btn-save-schedule');
+
   // Settings
   $.inpSsid         = document.getElementById('inp-ssid');
   $.inpPass         = document.getElementById('inp-pass');
+  $.inpChannel      = document.getElementById('inp-channel');
+  $.inpMaxConn      = document.getElementById('inp-max-conn');
   $.togDhcp         = document.getElementById('tog-dhcp');
   $.staticIpFields  = document.getElementById('static-ip-fields');
   $.inpIp           = document.getElementById('inp-ip');
@@ -215,6 +232,9 @@ function initNav() {
       item.classList.add('active');
       document.getElementById(`page-${target}`)?.classList.add('active');
 
+      /* Load current settings from firmware when user opens the Settings page */
+      if (target === 'settings') loadSettings();
+
       // Close drawer on mobile after nav
       closeSidebar();
     });
@@ -252,7 +272,55 @@ function initRelay() {
 }
 
 
-// ── 7. Peripheral Toggles ─────────────────────────────────────────────────────
+// ── 7. Relay Schedule ─────────────────────────────────────────────────────────
+//
+//  Sends start/stop times (HH:MM) plus current browser time to firmware.
+//  Firmware uses device_time to sync its internal clock for comparison.
+//
+function setScheduleBadge(enabled) {
+  $.scheduleBadge.textContent = enabled ? 'ON' : 'OFF';
+  $.scheduleBadge.classList.toggle('on', enabled);
+}
+
+function initSchedule() {
+  // Reflect toggle state in badge immediately
+  $.togSchedule.addEventListener('change', () => {
+    setScheduleBadge($.togSchedule.checked);
+  });
+
+  $.btnSaveSchedule.addEventListener('click', async () => {
+    const enabled = $.togSchedule.checked;
+    const start   = $.inpScheduleStart.value;  // "HH:MM" or ""
+    const stop    = $.inpScheduleStop.value;
+
+    if (enabled && (!start || !stop)) {
+      showToast('Set both start and stop times first', 'warn');
+      return;
+    }
+
+    // Send current browser time so firmware can sync
+    const now = new Date();
+    const device_time = String(now.getHours()).padStart(2, '0') + ':' +
+                        String(now.getMinutes()).padStart(2, '0') + ':' +
+                        String(now.getSeconds()).padStart(2, '0');
+
+    const payload = { enabled, start, stop, device_time };
+
+    try {
+      $.btnSaveSchedule.disabled = true;
+      await API.setSchedule(payload);
+      setScheduleBadge(enabled);
+      showToast(enabled ? `Schedule set: ${start} → ${stop}` : 'Schedule disabled', 'success');
+    } catch (err) {
+      showToast('Schedule save failed: ' + err.message, 'error');
+    } finally {
+      $.btnSaveSchedule.disabled = false;
+    }
+  });
+}
+
+
+// ── 8. Peripheral Toggles ─────────────────────────────────────────────────────
 function initPeripherals() {
   const peripherals = [
     { el: $.togLed,   key: 'led'   },
@@ -277,7 +345,7 @@ function initPeripherals() {
 }
 
 
-// ── 8. Emergency Stop ─────────────────────────────────────────────────────────
+// ── 9. Emergency Stop ─────────────────────────────────────────────────────────
 //
 //  Deliberately bypasses the confirm modal — immediate safety action.
 //
@@ -296,7 +364,7 @@ function initEmergencyStop() {
 }
 
 
-// ── 9. Telemetry Polling ──────────────────────────────────────────────────────
+// ── 10. Telemetry Polling ─────────────────────────────────────────────────────
 //
 //  Polls GET /api/status every TEL_POLL_MS milliseconds.
 //
@@ -411,8 +479,8 @@ function startTelemetryPolling() {
 }
 
 
-// ── 10. Settings ──────────────────────────────────────────────────────────────
-const IP_RE   = /^(\d{1,3}\.){3}\d{1,3}$/;
+// ── 11. Settings ──────────────────────────────────────────────────────────────
+const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
 
 function validateIP(str) {
   if (!IP_RE.test(str)) return false;
@@ -421,6 +489,25 @@ function validateIP(str) {
 
 function showSettingsError(msg) {
   $.settingsError.textContent = msg;
+}
+
+/**
+ * Fetch current settings from firmware and pre-fill the form.
+ * Called once when the user navigates to the Settings page.
+ */
+async function loadSettings() {
+  try {
+    const d = await API.getSettings();
+    if (d.ssid)            $.inpSsid.value    = d.ssid;
+    if (d.channel)         $.inpChannel.value  = d.channel;
+    if (d.max_connections) $.inpMaxConn.value  = d.max_connections;
+    if (d.ip)              $.inpIp.value       = d.ip;
+    if (d.gateway)         $.inpGw.value       = d.gateway;
+    if (d.netmask)         $.inpMask.value     = d.netmask;
+    /* password is not returned by firmware — left blank intentionally */
+  } catch (err) {
+    console.warn('[settings] failed to load current config:', err.message);
+  }
 }
 
 function initSettings() {
@@ -436,12 +523,29 @@ function initSettings() {
   // Save
   $.btnSaveSettings.addEventListener('click', async () => {
     showSettingsError('');
-    [$.inpIp, $.inpMask, $.inpGw, $.inpDns].forEach(el => el.classList.remove('invalid'));
+    [$.inpIp, $.inpMask, $.inpGw, $.inpDns, $.inpChannel, $.inpMaxConn]
+      .forEach(el => el.classList.remove('invalid'));
 
-    const dhcp = $.togDhcp.checked;
+    const dhcp    = $.togDhcp.checked;
+    const channel = parseInt($.inpChannel.value, 10);
+    const maxConn = parseInt($.inpMaxConn.value, 10);
+
+    if (isNaN(channel) || channel < 1 || channel > 13) {
+      showSettingsError('Channel must be between 1 and 13.');
+      $.inpChannel.classList.add('invalid');
+      return;
+    }
+    if (isNaN(maxConn) || maxConn < 1 || maxConn > 10) {
+      showSettingsError('Max connections must be between 1 and 10.');
+      $.inpMaxConn.classList.add('invalid');
+      return;
+    }
+
     const payload = {
-      ssid: $.inpSsid.value.trim(),
-      password: $.inpPass.value,
+      ssid:            $.inpSsid.value.trim(),
+      password:        $.inpPass.value,
+      channel,
+      max_connections: maxConn,
       dhcp,
     };
 
@@ -514,12 +618,13 @@ function initSettings() {
 }
 
 
-// ── 11. Init ──────────────────────────────────────────────────────────────────
+// ── 12. Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   cacheDom();
   initModal();
   initNav();
   initRelay();
+  initSchedule();
   initPeripherals();
   initEmergencyStop();
   initSettings();

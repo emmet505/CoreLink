@@ -12,6 +12,8 @@
 #include "modules/wifi/wifi.h"
 #include "nvs_flash.h"
 
+#include "wifi_config_store.h"
+
 static const char* TAG = "APP";
 
 static void monitor_task(void* pvParameters);
@@ -30,8 +32,9 @@ static void monitor_task(void* pvParameters) {
 
 void app_main(void) {
   ESP_LOGI(TAG, "Simple IoT House");
-
+  
   esp_err_t ret = nvs_flash_init();
+  
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
       ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
     ESP_LOGW(TAG, "Erasing NVS and reinitializing");

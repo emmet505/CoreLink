@@ -349,6 +349,43 @@ body { display: flex; min-height: 100vh; }
   box-shadow: 0 0 8px var(--accent-glow);
 }
 
+/* ── Schedule Badge ─────────────────────────────────────────── */
+.schedule-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  transition: background 0.2s, color 0.2s;
+}
+
+.schedule-badge.on {
+  background: rgba(20, 184, 166, 0.15);
+  color: var(--accent-dim);
+}
+
+/* ── Schedule time inputs row ───────────────────────────────── */
+.schedule-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+  margin-bottom: 0.25rem;
+}
+
+/* time input — match field-input but keep browser picker */
+.field-input[type="time"] {
+  cursor: pointer;
+}
+
+/* ── Settings two-column row ────────────────────────────────── */
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+}
+
 /* ── Toggle List ────────────────────────────────────────────── */
 .toggle-list {
   list-style: none;
@@ -778,8 +815,10 @@ body { display: flex; min-height: 100vh; }
   .telemetry-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem 1rem; }
   .telemetry-grid--device { grid-template-columns: repeat(2, 1fr); }
 
-  /* Settings: static IP 1 col */
+  /* Settings: static IP and channel/maxconn 1 col */
   .static-ip-fields { grid-template-columns: 1fr; }
+  .settings-row     { grid-template-columns: 1fr; }
+  .schedule-row     { grid-template-columns: 1fr; }
 
   /* Relay buttons full width */
   .relay-controls { flex-direction: column; }
