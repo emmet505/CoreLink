@@ -36,28 +36,29 @@
 #define CONFIG_WIFI_DEFAULT_NETMASK "255.255.255.0"
 #endif
 
-static const char* TAG = "NVS";
-static const char* NVS_NAMESPACE = "wifi_cfg";
-static const char* KEY_SSID = "ssid";
-static const char* KEY_PASSWORD = "password";
-static const char* KEY_CHANNEL = "channel";
-static const char* KEY_MAX_CONNECTIONS = "max_conn";
-static const char* KEY_IP = "ip";
-static const char* KEY_GATEWAY = "gateway";
-static const char* KEY_NETMASK = "netmask";
+static const char* TAG                  = "NVS";
+static const char* NVS_NAMESPACE        = "wifi_cfg";
+static const char* KEY_SSID             = "ssid";
+static const char* KEY_PASSWORD         = "password";
+static const char* KEY_CHANNEL          = "channel";
+static const char* KEY_MAX_CONNECTIONS  = "max_conn";
+static const char* KEY_IP               = "ip";
+static const char* KEY_GATEWAY          = "gateway";
+static const char* KEY_NETMASK          = "netmask";
+static const char* KEY_DNS              = "dns";
+static const char* KEY_DHCP             = "dhcp";
 
 static void set_defaults(wifi_config_store_t* cfg) {
   memset(cfg, 0, sizeof(*cfg));
-  snprintf(cfg->ssid, sizeof(cfg->ssid), "%s", CONFIG_WIFI_DEFAULT_SSID);
-  snprintf(cfg->password, sizeof(cfg->password), "%s",
-           CONFIG_WIFI_DEFAULT_PASSWORD);
-  cfg->channel = CONFIG_WIFI_DEFAULT_CHANNEL;
+  snprintf(cfg->ssid,     sizeof(cfg->ssid),     "%s", CONFIG_WIFI_DEFAULT_SSID);
+  snprintf(cfg->password, sizeof(cfg->password), "%s", CONFIG_WIFI_DEFAULT_PASSWORD);
+  cfg->channel         = CONFIG_WIFI_DEFAULT_CHANNEL;
   cfg->max_connections = CONFIG_WIFI_DEFAULT_MAX_CONNECTIONS;
-  snprintf(cfg->ip, sizeof(cfg->ip), "%s", CONFIG_WIFI_DEFAULT_IP);
-  snprintf(cfg->gateway, sizeof(cfg->gateway), "%s",
-           CONFIG_WIFI_DEFAULT_GATEWAY);
-  snprintf(cfg->netmask, sizeof(cfg->netmask), "%s",
-           CONFIG_WIFI_DEFAULT_NETMASK);
+  snprintf(cfg->ip,      sizeof(cfg->ip),      "%s", CONFIG_WIFI_DEFAULT_IP);
+  snprintf(cfg->gateway, sizeof(cfg->gateway), "%s", CONFIG_WIFI_DEFAULT_GATEWAY);
+  snprintf(cfg->netmask, sizeof(cfg->netmask), "%s", CONFIG_WIFI_DEFAULT_NETMASK);
+  snprintf(cfg->dns,     sizeof(cfg->dns),     "%s", "8.8.8.8");
+  cfg->dhcp = false;   // default -> static ip
 }
 
 esp_err_t wifi_config_load(wifi_config_store_t* out_cfg) {
@@ -137,6 +138,25 @@ esp_err_t wifi_config_load(wifi_config_store_t* out_cfg) {
     return err;
   }
 
+  // dns
+  size = sizeof(out_cfg->dns);
+  err = nvs_get_str(handle, KEY_DNS, out_cfg->dns, &size);
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    snprintf(out_cfg->dns, sizeof(out_cfg->dns), "%s", "8.8.8.8");
+  } else if (err != ESP_OK) {
+    nvs_close(handle);
+    return err;
+  }
+
+  // dhcp
+  uint8_t dhcp = 0;
+  err = nvs_get_u8(handle, KEY_DHCP, &dhcp);
+  if (err == ESP_OK) {
+    out_cfg->dhcp = (bool)dhcp;
+  } else {
+    out_cfg->dhcp = false;
+  }
+
   nvs_close(handle);
   return ESP_OK;
 }
@@ -192,6 +212,18 @@ esp_err_t wifi_config_save(const wifi_config_store_t* cfg) {
     return err;
   }
 
+    err = nvs_set_str(handle, KEY_DNS, cfg->dns);
+  if (err != ESP_OK) {
+    nvs_close(handle);
+    return err;
+  }
+
+  err = nvs_set_u8(handle, KEY_DHCP, (uint8_t)cfg->dhcp);
+  if (err != ESP_OK) {
+    nvs_close(handle);
+    return err;
+  }
+  
   err = nvs_commit(handle);
   nvs_close(handle);
   return err;

@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "captive_portal.h"
+#include "dns_server.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -11,30 +13,28 @@
 #include "modules/system_monitor/system_monitor.h"
 #include "modules/wifi/wifi.h"
 #include "nvs_flash.h"
-
 #include "wifi_config_store.h"
+
+#include "captive_portal.h"
 
 static const char* TAG = "APP";
 
 static void monitor_task(void* pvParameters);
 
-
 static void monitor_task(void* pvParameters) {
-
   while (1) {
     int clients = wifi_get_connected_clients();
     ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients,
              xPortGetCoreID());
     vTaskDelay(pdMS_TO_TICKS(15000));
-    
   }
 }
 
 void app_main(void) {
   ESP_LOGI(TAG, "Simple IoT House");
-  
+  // nvs_flash_erase();
   esp_err_t ret = nvs_flash_init();
-  
+
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
       ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
     ESP_LOGW(TAG, "Erasing NVS and reinitializing");
@@ -51,9 +51,11 @@ void app_main(void) {
   ESP_LOGI(TAG, "Event loop ready");
 
   ESP_ERROR_CHECK(wifi_init());
-
   ESP_ERROR_CHECK(filesystem_init());
-  ESP_ERROR_CHECK(http_server_start());
+ESP_ERROR_CHECK(http_server_start());
+ESP_ERROR_CHECK(captive_portal_register(http_server_get_handle()));
+ESP_ERROR_CHECK(dns_server_start());
+
 
   xTaskCreate(monitor_task, "monitor", 2048, NULL, tskIDLE_PRIORITY, NULL);
 

@@ -8,6 +8,7 @@
 #include "esp_wifi.h"
 #include "lwip/ip4_addr.h"
 #include "wifi_config_store.h"
+#include "dns_server.h"
 
 static const char* TAG = "WiFi";
 static esp_netif_t* netif_ap = NULL;
@@ -116,6 +117,7 @@ esp_err_t wifi_init(void) {
     return ESP_FAIL;
   }
 
+
   if (esp_netif_dhcps_start(netif_ap) != ESP_OK) {
     ESP_LOGE(TAG, "Failed to start DHCP server");
     return ESP_FAIL;
@@ -125,6 +127,7 @@ esp_err_t wifi_init(void) {
     ESP_LOGE(TAG, "Failed to start Wi-Fi");
     return ESP_FAIL;
   }
+
 
   ESP_LOGI(TAG, "Wi-Fi AP initialized");
   ESP_LOGI(TAG, "SSID: %s", cfg.ssid);

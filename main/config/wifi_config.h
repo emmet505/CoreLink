@@ -11,5 +11,6 @@
 #define WIFI_AP_IP              "192.168.4.1"
 #define WIFI_AP_GATEWAY         "192.168.4.1"
 #define WIFI_AP_NETMASK         "255.255.255.0"
+#define WIFI_DNS                "1.1.1.1"
 
 #endif 

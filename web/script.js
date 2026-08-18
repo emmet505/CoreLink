@@ -13,7 +13,7 @@
 //  The rest of the application never touches fetch() directly.
 //
 const API = {
-  BASE: 'http://192.168.4.1',
+  BASE: window.location.origin,
 
   /**
    * Core request method.
@@ -553,7 +553,7 @@ function initSettings() {
     if (!dhcp) {
       const fields = [
         { el: $.inpIp,   key: 'ip',      label: 'Static IP'   },
-        { el: $.inpMask, key: 'mask',    label: 'Subnet Mask' },
+        { el: $.inpMask, key: 'netmask',    label: 'Subnet Mask' },
         { el: $.inpGw,   key: 'gateway', label: 'Gateway'     },
         { el: $.inpDns,  key: 'dns',     label: 'DNS Server'  },
       ];
@@ -573,8 +573,38 @@ function initSettings() {
 
     try {
       $.btnSaveSettings.disabled = true;
-      await API.saveSettings(payload);
-      showToast('Settings saved', 'success');
+      const result = await API.saveSettings(payload);
+
+      if (result.reboot) {
+const newSsid = payload.ssid || $.inpSsid.value.trim();
+const newIp   = (!payload.dhcp && payload.ip) ? payload.ip : window.location.hostname;
+        // telemetry polling رو متوقف کن — دستگاه داره ریبوت میکنه
+        clearInterval(telPollTimer);
+        setOnline(false);
+
+        // modal با اطلاعات اتصال جدید نشون بده
+        $.modalTitle.textContent   = 'Device Rebooting';
+        $.modalBody.innerHTML      =
+          `Settings saved. The device is restarting.<br><br>` +
+          `<strong>Network:</strong> ${newSsid}<br>` +
+          `<strong>Address:</strong> http://${newIp}<br><br>` +
+          `Reconnect to the WiFi network above, then open the address.`;
+        $.modalConfirm.textContent = 'OK';
+        $.modalCancel.style.display = 'none';
+        $.modalBackdrop.classList.add('open');
+
+        // وقتی OK زد، modal رو ببند و صفحه رو رفرش کن
+        const confirmed = await new Promise(r => { modalResolve = r; });
+        if (confirmed) {
+          $.modalCancel.style.display = '';   // reset برای دفعه بعد
+          window.location.href = `http://${newIp}`;
+        }
+
+      } else {
+        // فقط max_connections عوض شده — نیازی به reboot نیست
+        showToast('Settings saved', 'success');
+      }
+
     } catch (err) {
       showToast('Save failed: ' + err.message, 'error');
     } finally {
