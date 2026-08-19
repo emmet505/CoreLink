@@ -116,6 +116,20 @@ esp_err_t wifi_init(void) {
     ESP_LOGE(TAG, "Failed to set IP info");
     return ESP_FAIL;
   }
+  
+  const char *portal_url = "http://192.168.4.1/";
+  esp_err_t dhcp_opt_err = esp_netif_dhcps_option(
+      netif_ap,
+      ESP_NETIF_OP_SET,
+      (esp_netif_dhcp_option_id_t)114,
+      (void *)portal_url,
+      strlen(portal_url)
+  );
+  if (dhcp_opt_err != ESP_OK) {
+      ESP_LOGW(TAG, "DHCP option 114 failed: %s", esp_err_to_name(dhcp_opt_err));
+  } else {
+      ESP_LOGI(TAG, "Captive portal URI set in DHCP");
+  }
 
 
   if (esp_netif_dhcps_start(netif_ap) != ESP_OK) {
@@ -127,6 +141,9 @@ esp_err_t wifi_init(void) {
     ESP_LOGE(TAG, "Failed to start Wi-Fi");
     return ESP_FAIL;
   }
+
+dns_server_config_t dns_config = DNS_SERVER_CONFIG_SINGLE("*", "WIFI_AP_DEF");
+start_dns_server(&dns_config);
 
 
   ESP_LOGI(TAG, "Wi-Fi AP initialized");

@@ -52,9 +52,7 @@ void app_main(void) {
 
   ESP_ERROR_CHECK(wifi_init());
   ESP_ERROR_CHECK(filesystem_init());
-ESP_ERROR_CHECK(http_server_start());
-ESP_ERROR_CHECK(captive_portal_register(http_server_get_handle()));
-ESP_ERROR_CHECK(dns_server_start());
+  ESP_ERROR_CHECK(http_server_start());
 
 
   xTaskCreate(monitor_task, "monitor", 2048, NULL, tskIDLE_PRIORITY, NULL);

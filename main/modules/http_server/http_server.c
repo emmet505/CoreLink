@@ -11,6 +11,7 @@
 #include "lwip/ip4_addr.h"
 #include "system_monitor.h"
 #include "wifi_config_store.h"
+#include "captive_portal.h"
 
 #define FILE_PATH_MAX 512
 #define FILE_BUFFER_SIZE 512
@@ -74,6 +75,7 @@ static esp_err_t serve_file(httpd_req_t* req, const char* path) {
 }
 
 static esp_err_t root_handler(httpd_req_t* req) {
+  ESP_LOGI(TAG, "ROOT REQUEST: %s", req->uri);
   return serve_file(req, "/littlefs/index.html");
 }
 
@@ -90,11 +92,13 @@ static esp_err_t static_handler(httpd_req_t* req) {
   return serve_file(req, path);
 }
 
-
 static httpd_handle_t s_server = NULL;
 esp_err_t http_server_start(void) {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+  config.max_open_sockets = 7;
+  config.lru_purge_enable = true;
   config.max_uri_handlers = 32;
+  config.uri_match_fn = httpd_uri_match_wildcard;
 
   ESP_LOGI(TAG, "Starting HTTP server");
 
@@ -155,14 +159,15 @@ esp_err_t http_server_start(void) {
                                    .user_ctx = NULL};
   httpd_register_uri_handler(s_server, &settings_post_uri);
 
+  esp_err_t cp_err = captive_portal_register(s_server);
+  if (cp_err != ESP_OK) {
+      ESP_LOGE(TAG, "captive portal register failed");
+      return cp_err;
+  }
   return ESP_OK;
 }
 
-httpd_handle_t http_server_get_handle(void) {
-  return s_server;
-}
-
-
+httpd_handle_t http_server_get_handle(void) { return s_server; }
 
 /* ── POST /api/relay/schedule ────────────────────────────────────────────────
  *
@@ -353,34 +358,36 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
   }
 
   /* 4. Extract fields */
-  cJSON* j_ssid     = cJSON_GetObjectItem(root, "ssid");
-  cJSON* j_channel  = cJSON_GetObjectItem(root, "channel");
+  cJSON* j_ssid = cJSON_GetObjectItem(root, "ssid");
+  cJSON* j_channel = cJSON_GetObjectItem(root, "channel");
   cJSON* j_max_conn = cJSON_GetObjectItem(root, "max_connections");
   cJSON* j_password = cJSON_GetObjectItem(root, "password");
-  cJSON* j_dhcp     = cJSON_GetObjectItem(root, "dhcp");
-  cJSON* j_ip       = cJSON_GetObjectItem(root, "ip");
-  cJSON* j_gateway  = cJSON_GetObjectItem(root, "gateway");
-  cJSON* j_netmask  = cJSON_GetObjectItem(root, "netmask");
-  cJSON* j_dns      = cJSON_GetObjectItem(root, "dns");
+  cJSON* j_dhcp = cJSON_GetObjectItem(root, "dhcp");
+  cJSON* j_ip = cJSON_GetObjectItem(root, "ip");
+  cJSON* j_gateway = cJSON_GetObjectItem(root, "gateway");
+  cJSON* j_netmask = cJSON_GetObjectItem(root, "netmask");
+  cJSON* j_dns = cJSON_GetObjectItem(root, "dns");
 
   /* 5. Required fields: channel and max_connections always required */
   if (!cJSON_IsNumber(j_channel) || !cJSON_IsNumber(j_max_conn)) {
     cJSON_Delete(root);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Missing channel or max_connections\"}");
+    httpd_resp_sendstr(
+        req,
+        "{\"success\":false,\"error\":\"Missing channel or max_connections\"}");
     return ESP_OK;
   }
 
-  int channel  = (int)cJSON_GetNumberValue(j_channel);
+  int channel = (int)cJSON_GetNumberValue(j_channel);
   int max_conn = (int)cJSON_GetNumberValue(j_max_conn);
   bool dhcp_enabled = cJSON_IsTrue(j_dhcp);
 
   /* IP fields only required when dhcp=false */
-  const char* ip      = NULL;
+  const char* ip = NULL;
   const char* gateway = NULL;
   const char* netmask = NULL;
-  const char* dns     = NULL;
+  const char* dns = NULL;
 
   if (!dhcp_enabled) {
     if (!cJSON_IsString(j_ip) || !cJSON_IsString(j_gateway) ||
@@ -388,10 +395,12 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
       cJSON_Delete(root);
       httpd_resp_set_type(req, "application/json");
       httpd_resp_set_status(req, "400 Bad Request");
-      httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"ip, gateway and netmask required when dhcp is disabled\"}");
+      httpd_resp_sendstr(req,
+                         "{\"success\":false,\"error\":\"ip, gateway and "
+                         "netmask required when dhcp is disabled\"}");
       return ESP_OK;
     }
-    ip      = cJSON_GetStringValue(j_ip);
+    ip = cJSON_GetStringValue(j_ip);
     gateway = cJSON_GetStringValue(j_gateway);
     netmask = cJSON_GetStringValue(j_netmask);
     if (cJSON_IsString(j_dns)) {
@@ -445,8 +454,8 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_status(req, "400 Bad Request");
     char err_buf[128];
-    snprintf(err_buf, sizeof(err_buf),
-             "{\"success\":false,\"error\":\"%s\"}", field_error);
+    snprintf(err_buf, sizeof(err_buf), "{\"success\":false,\"error\":\"%s\"}",
+             field_error);
     httpd_resp_sendstr(req, err_buf);
     return ESP_OK;
   }
@@ -457,16 +466,16 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
     cJSON_Delete(root);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_status(req, "500 Internal Server Error");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Failed to load current config\"}");
+    httpd_resp_sendstr(
+        req, "{\"success\":false,\"error\":\"Failed to load current config\"}");
     return ESP_OK;
   }
   wifi_config_store_t old_cfg = cfg; /* for logging changes */
 
-
   /* 8. Overwrite only the fields that were sent */
-  cfg.channel         = (uint8_t)channel;
+  cfg.channel = (uint8_t)channel;
   cfg.max_connections = (uint8_t)max_conn;
-  cfg.dhcp            = dhcp_enabled;
+  cfg.dhcp = dhcp_enabled;
 
   if (ssid) {
     strlcpy(cfg.ssid, ssid, sizeof(cfg.ssid));
@@ -481,7 +490,7 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
   }
 
   if (!dhcp_enabled) {
-    strlcpy(cfg.ip,      ip,      sizeof(cfg.ip));
+    strlcpy(cfg.ip, ip, sizeof(cfg.ip));
     strlcpy(cfg.gateway, gateway, sizeof(cfg.gateway));
     strlcpy(cfg.netmask, netmask, sizeof(cfg.netmask));
     if (dns) {
@@ -500,24 +509,25 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
     ESP_LOGE(TAG, "wifi_config_save failed: %s", esp_err_to_name(err));
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_status(req, "500 Internal Server Error");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Failed to save settings\"}");
+    httpd_resp_sendstr(
+        req, "{\"success\":false,\"error\":\"Failed to save settings\"}");
     return ESP_OK;
   }
 
   ESP_LOGI(TAG, "Settings saved — channel=%d max_conn=%d dhcp=%d ssid=%s",
            cfg.channel, cfg.max_connections, cfg.dhcp, cfg.ssid);
 
-             bool needs_reboot =
-      (strcmp(cfg.ssid,     old_cfg.ssid)     != 0) ||
-      (strcmp(cfg.password, old_cfg.password) != 0) ||
-      (strcmp(cfg.ip,       old_cfg.ip)       != 0) ||
-      (strcmp(cfg.gateway,  old_cfg.gateway)  != 0) ||
-      (strcmp(cfg.netmask,  old_cfg.netmask)  != 0) ||
-      (strcmp(cfg.dns,      old_cfg.dns)      != 0) ||
-      (cfg.channel != old_cfg.channel)               ||
-      (cfg.dhcp    != old_cfg.dhcp);
+  bool needs_reboot = (strcmp(cfg.ssid, old_cfg.ssid) != 0) ||
+                      (strcmp(cfg.password, old_cfg.password) != 0) ||
+                      (strcmp(cfg.ip, old_cfg.ip) != 0) ||
+                      (strcmp(cfg.gateway, old_cfg.gateway) != 0) ||
+                      (strcmp(cfg.netmask, old_cfg.netmask) != 0) ||
+                      (strcmp(cfg.dns, old_cfg.dns) != 0) ||
+                      (cfg.channel != old_cfg.channel) ||
+                      (cfg.dhcp != old_cfg.dhcp);
 
-  ESP_LOGI(TAG, "Settings saved — channel=%d max_conn=%d dhcp=%d ssid=%s reboot=%d",
+  ESP_LOGI(TAG,
+           "Settings saved — channel=%d max_conn=%d dhcp=%d ssid=%s reboot=%d",
            cfg.channel, cfg.max_connections, cfg.dhcp, cfg.ssid, needs_reboot);
 
   /* 11. Respond before reboot so client gets the answer */
@@ -534,7 +544,7 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
     vTaskDelay(pdMS_TO_TICKS(1500));
     esp_restart();
   }
-  
+
   /* 10. Success */
   httpd_resp_set_type(req, "application/json");
   httpd_resp_sendstr(req, "{\"success\":true}");
