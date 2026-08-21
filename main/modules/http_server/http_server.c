@@ -5,13 +5,13 @@
 #include <string.h>
 
 #include "cJSON.h"
+#include "captive_portal.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "lwip/ip4_addr.h"
 #include "system_monitor.h"
 #include "wifi_config_store.h"
-#include "captive_portal.h"
 
 #define FILE_PATH_MAX 512
 #define FILE_BUFFER_SIZE 512
@@ -95,7 +95,7 @@ static esp_err_t static_handler(httpd_req_t* req) {
 static httpd_handle_t s_server = NULL;
 esp_err_t http_server_start(void) {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-  config.max_open_sockets = 7;
+  config.max_open_sockets = 6;
   config.lru_purge_enable = true;
   config.max_uri_handlers = 32;
   config.uri_match_fn = httpd_uri_match_wildcard;
@@ -161,8 +161,8 @@ esp_err_t http_server_start(void) {
 
   esp_err_t cp_err = captive_portal_register(s_server);
   if (cp_err != ESP_OK) {
-      ESP_LOGE(TAG, "captive portal register failed");
-      return cp_err;
+    ESP_LOGE(TAG, "captive portal register failed");
+    return cp_err;
   }
   return ESP_OK;
 }
@@ -362,6 +362,7 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
   cJSON* j_channel = cJSON_GetObjectItem(root, "channel");
   cJSON* j_max_conn = cJSON_GetObjectItem(root, "max_connections");
   cJSON* j_password = cJSON_GetObjectItem(root, "password");
+  cJSON* j_old_password = cJSON_GetObjectItem(root, "old_password");
   cJSON* j_dhcp = cJSON_GetObjectItem(root, "dhcp");
   cJSON* j_ip = cJSON_GetObjectItem(root, "ip");
   cJSON* j_gateway = cJSON_GetObjectItem(root, "gateway");
@@ -411,13 +412,12 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
   /* password: only update if present and non-empty */
   const char* password = NULL;
   if (cJSON_IsString(j_password)) {
-    const char* pw = cJSON_GetStringValue(j_password);
-    if (pw && strlen(pw) > 0) {
-      password = pw;
+    const char* p  = cJSON_GetStringValue(j_password);
+    if (p && strlen(p) > 0) {
+      password = p;
     }
-  }
 
-  /* ssid: only update if present and non-empty */
+  }
   const char* ssid = NULL;
   if (cJSON_IsString(j_ssid)) {
     const char* s = cJSON_GetStringValue(j_ssid);
@@ -460,7 +460,7 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
     return ESP_OK;
   }
 
-  /* 7. Load existing config so untouched fields survive */
+  /* 7. Load existing config from nvs so untouched fields survive */
   wifi_config_store_t cfg;
   if (wifi_config_load(&cfg) != ESP_OK) {
     cJSON_Delete(root);
@@ -471,6 +471,30 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
     return ESP_OK;
   }
   wifi_config_store_t old_cfg = cfg; /* for logging changes */
+
+  // check old and new password
+
+  if (password) {
+    const char* old_pw = cJSON_GetStringValue(j_old_password);
+    if (!old_pw || strlen(old_pw) == 0) {
+      cJSON_Delete(root);
+      httpd_resp_set_type(req, "application/json");
+      httpd_resp_set_status(req, "400 Bad Request");
+      httpd_resp_sendstr(
+          req, "{\"success\":false,\"error\":\"old_password required\"}");
+      
+      return ESP_OK;
+    }
+
+    if (strcmp(old_pw, cfg.password) != 0) {
+      cJSON_Delete(root);
+      httpd_resp_set_type(req, "application/json");
+      httpd_resp_set_status(req, "400 Bad Request");
+      httpd_resp_sendstr(
+          req, "{\"success\":false,\"error\":\"Incorrect old password\"}");
+      return ESP_OK;
+    }
+  }
 
   /* 8. Overwrite only the fields that were sent */
   cfg.channel = (uint8_t)channel;
@@ -530,23 +554,19 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
            "Settings saved — channel=%d max_conn=%d dhcp=%d ssid=%s reboot=%d",
            cfg.channel, cfg.max_connections, cfg.dhcp, cfg.ssid, needs_reboot);
 
-  /* 11. Respond before reboot so client gets the answer */
   httpd_resp_set_type(req, "application/json");
-  if (needs_reboot) {
-    httpd_resp_sendstr(req, "{\"success\":true,\"reboot\":true}");
-  } else {
-    httpd_resp_sendstr(req, "{\"success\":true,\"reboot\":false}");
-  }
+httpd_resp_sendstr(
+    req,
+    needs_reboot
+        ? "{\"success\":true,\"reboot\":true}"
+        : "{\"success\":true,\"reboot\":false}"
+);
 
-  /* 12. Reboot after short delay so HTTP response reaches client */
-  if (needs_reboot) {
+if (needs_reboot) {
     ESP_LOGW(TAG, "Rebooting in 1500ms due to config change...");
     vTaskDelay(pdMS_TO_TICKS(1500));
     esp_restart();
-  }
+}
 
-  /* 10. Success */
-  httpd_resp_set_type(req, "application/json");
-  httpd_resp_sendstr(req, "{\"success\":true}");
-  return ESP_OK;
+return ESP_OK;
 }

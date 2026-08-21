@@ -127,7 +127,8 @@ function cacheDom() {
 
   // Settings
   $.inpSsid         = document.getElementById('inp-ssid');
-  $.inpPass         = document.getElementById('inp-pass');
+  $.inpPassOld = document.getElementById('inp-pass-old');
+  $.inpPassNew = document.getElementById('inp-pass-new');
   $.inpChannel      = document.getElementById('inp-channel');
   $.inpMaxConn      = document.getElementById('inp-max-conn');
   $.togDhcp         = document.getElementById('tog-dhcp');
@@ -542,13 +543,15 @@ function initSettings() {
     }
 
     const payload = {
-      ssid:            $.inpSsid.value.trim(),
-      password:        $.inpPass.value,
+      ssid:            $.inpSsid.value.trim(), 
       channel,
       max_connections: maxConn,
       dhcp,
     };
-
+    if ($.inpPassNew.value) {
+    payload.password     = $.inpPassNew.value;
+    payload.old_password = $.inpPassOld.value;
+}
     // Validate static IP fields when DHCP is off
     if (!dhcp) {
       const fields = [
