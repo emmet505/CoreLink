@@ -2,8 +2,9 @@ idf_component_register(
     SRCS
         "main.c"
         "modules/wifi/wifi.c"
-        "modules/wifi/dns_server.c"
         "utils/captive_portal/captive_portal.c"
+        "utils/Network/dns_server.c"
+        "utils/OTA/ota_handler.c"
         "modules/wifi/wifi_config_store.c"
         "modules/http_server/http_server.c"
         "modules/filesystem/filesystem.c"
@@ -18,6 +19,8 @@ idf_component_register(
         "modules/filesystem"
         "modules/system_monitor"
         "utils/captive_portal"
+        "utils/Network"
+        "utils/OTA"
     REQUIRES
         esp_wifi
         esp_netif
@@ -28,4 +31,5 @@ idf_component_register(
         esp_http_server
         littlefs
         spi_flash
+        app_update
 )

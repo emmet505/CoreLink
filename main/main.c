@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "captive_portal.h"
-#include "dns_server.h"
+#include "utils/Network/dns_server.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -32,7 +32,7 @@ static void monitor_task(void* pvParameters) {
 
 void app_main(void) {
   ESP_LOGI(TAG, "Simple IoT House");
-  // nvs_flash_erase();
+  //nvs_flash_erase();
   esp_err_t ret = nvs_flash_init();
 
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||

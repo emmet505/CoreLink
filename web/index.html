@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ESP32-S3 Device Dashboard</title>
+  <title>CoreLink Dashboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -15,7 +15,7 @@
     </button>
     <div class="topbar-brand">
       <span style="color:var(--accent);font-size:1.1rem">⬡</span>
-      <span style="font-size:0.85rem;font-weight:700;color:#e8f0fa;letter-spacing:0.04em">ESP32-S3</span>
+      <span style="font-size:0.85rem;font-weight:700;color:#e8f0fa;letter-spacing:0.04em">CoreLink</span>
     </div>
     <span class="status-dot" id="topbar-status-dot"></span>
   </div>
@@ -28,7 +28,7 @@
     <div class="sidebar-brand">
       <div class="brand-icon">⬡</div>
       <div class="brand-text">
-        <span class="brand-name">ESP32-S3</span>
+        <span class="brand-name">CoreLink salam</span>
         <span class="brand-sub">Device Control</span>
       </div>
     </div>
@@ -41,6 +41,10 @@
       <li class="nav-item" data-page="settings">
         <span class="nav-icon">⚙</span>
         <span class="nav-label">Settings</span>
+      </li>
+      <li class="nav-item" data-page="update">
+        <span class="nav-icon">↑</span>
+        <span class="nav-label">Firmware Update</span>
       </li>
     </ul>
 
@@ -57,7 +61,6 @@
 
     <!-- ══ Device Control Page ══════════════════════════════════════════════ -->
     <section class="page active" id="page-control">
-
       <header class="page-header">
         <h1 class="page-title">Device Control</h1>
         <p class="page-subtitle">Relay, peripherals, and live system status</p>
@@ -86,7 +89,6 @@
             <span class="schedule-badge" id="schedule-badge">OFF</span>
           </div>
           <p class="card-desc">Set a daily on/off window. The relay will switch automatically based on device time.</p>
-
           <div class="schedule-row">
             <div class="field-group">
               <label class="field-label" for="inp-schedule-start">Start Time</label>
@@ -97,7 +99,6 @@
               <input class="field-input mono" type="time" id="inp-schedule-stop" />
             </div>
           </div>
-
           <div class="toggle-row toggle-row--field" style="margin-top:0.25rem">
             <span class="field-label">Enable Schedule</span>
             <label class="toggle-switch">
@@ -105,7 +106,6 @@
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
             </label>
           </div>
-
           <div class="card-actions">
             <button class="btn btn--primary" id="btn-save-schedule">Apply Schedule</button>
           </div>
@@ -148,14 +148,13 @@
           </ul>
         </div>
 
-        <!-- Telemetry Card -->
+        <!-- Telemetry -->
         <div class="card telemetry-card" id="telemetry-card">
           <div class="card-header">
             <span class="card-title">System Status</span>
             <span class="status-dot" id="telemetry-status-dot"></span>
           </div>
 
-          <!-- ── Heap ─────────────────────────────────────────────────── -->
           <div class="tel-section-label">Heap (total)</div>
           <div class="telemetry-grid">
             <div class="telemetry-group">
@@ -185,7 +184,6 @@
             </div>
           </div>
 
-          <!-- ── Internal RAM ──────────────────────────────────────────── -->
           <div class="tel-section-label">Internal RAM</div>
           <div class="telemetry-grid">
             <div class="telemetry-group">
@@ -211,7 +209,6 @@
             </div>
           </div>
 
-          <!-- ── PSRAM ─────────────────────────────────────────────────── -->
           <div class="tel-section-label">PSRAM</div>
           <div class="telemetry-grid">
             <div class="telemetry-group">
@@ -237,7 +234,6 @@
             </div>
           </div>
 
-          <!-- ── Device info ────────────────────────────────────────────── -->
           <div class="tel-section-label">Device</div>
           <div class="telemetry-grid telemetry-grid--device">
             <div class="telemetry-group">
@@ -273,7 +269,6 @@
 
     <!-- ══ Settings Page ════════════════════════════════════════════════════ -->
     <section class="page" id="page-settings">
-
       <header class="page-header">
         <h1 class="page-title">Settings</h1>
         <p class="page-subtitle">Network configuration and device management</p>
@@ -286,7 +281,6 @@
           <div class="card-header">
             <span class="card-title">Network Configuration</span>
           </div>
-
           <div class="field-group">
             <label class="field-label" for="inp-ssid">Wi-Fi SSID</label>
             <input class="field-input" type="text" id="inp-ssid" placeholder="Network name" />
@@ -299,7 +293,6 @@
             <label class="field-label" for="inp-pass-new">New Password</label>
             <input class="field-input" type="password" id="inp-pass-new" placeholder="••••••••" />
           </div>
-
           <div class="settings-row">
             <div class="field-group">
               <label class="field-label" for="inp-channel">Channel (1–13)</label>
@@ -310,8 +303,6 @@
               <input class="field-input mono" type="number" id="inp-max-conn" min="1" max="10" placeholder="4" />
             </div>
           </div>
-
-          <!-- DHCP toggle -->
           <div class="toggle-row toggle-row--field">
             <span class="field-label">Use DHCP</span>
             <label class="toggle-switch">
@@ -319,8 +310,6 @@
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
             </label>
           </div>
-
-          <!-- Static IP fields (hidden when DHCP on) -->
           <div class="static-ip-fields" id="static-ip-fields">
             <div class="field-group">
               <label class="field-label" for="inp-ip">Static IP</label>
@@ -339,9 +328,7 @@
               <input class="field-input mono" type="text" id="inp-dns" placeholder="8.8.8.8" />
             </div>
           </div>
-
           <div class="field-error" id="settings-error"></div>
-
           <div class="card-actions">
             <button class="btn btn--primary" id="btn-save-settings">Save Settings</button>
           </div>
@@ -362,16 +349,78 @@
       </div><!-- /grid -->
     </section>
 
+    <!-- ══ Firmware Update Page ══════════════════════════════════════════════ -->
+    <section class="page" id="page-update">
+      <header class="page-header">
+        <h1 class="page-title">Firmware Update</h1>
+        <p class="page-subtitle">Upload firmware and web files over the air</p>
+      </header>
+
+      <div class="grid">
+
+        <div class="card card--wide card--accent">
+          <div class="card-header">
+            <span class="card-title">OTA Update</span>
+          </div>
+          <p class="card-desc">
+            Select one or both files. Each file is optional — only upload what has changed.
+            The device will reboot automatically when the upload is complete.
+          </p>
+
+          <!-- Firmware -->
+          <div class="ota-row">
+            <div class="ota-row-header">
+              <span class="ota-label">Firmware</span>
+              <span class="ota-hint mono">.bin</span>
+            </div>
+            <div class="ota-file-wrap">
+              <label class="ota-file-btn">
+                Choose file
+                <input type="file" id="file-firmware" accept=".bin" />
+              </label>
+              <span class="ota-status" id="ota-firmware-status">No file selected</span>
+            </div>
+            <div class="ota-bar-wrap" id="ota-firmware-bar-wrap">
+              <div class="ota-bar" id="ota-firmware-bar"></div>
+            </div>
+          </div>
+
+          <!-- WebFS -->
+          <div class="ota-row">
+            <div class="ota-row-header">
+              <span class="ota-label">Web Files</span>
+              <span class="ota-hint mono">.bin</span>
+            </div>
+            <div class="ota-file-wrap">
+              <label class="ota-file-btn">
+                Choose file
+                <input type="file" id="file-webfs" accept=".bin" />
+              </label>
+              <span class="ota-status" id="ota-webfs-status">No file selected</span>
+            </div>
+            <div class="ota-bar-wrap" id="ota-webfs-bar-wrap">
+              <div class="ota-bar" id="ota-webfs-bar"></div>
+            </div>
+          </div>
+
+          <div class="card-actions" style="margin-top:1.25rem">
+            <button class="btn btn--primary" id="btn-ota-update">↑ Upload & Reboot</button>
+          </div>
+        </div>
+
+      </div><!-- /grid -->
+    </section>
+
   </main>
 
   <!-- ── Confirm Modal ─────────────────────────────────────────────────────── -->
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal" id="modal">
-      <div class="modal-title" id="modal-title">Confirm Action</div>
-      <div class="modal-body"  id="modal-body">Are you sure?</div>
+      <div class="modal-title"  id="modal-title">Confirm Action</div>
+      <div class="modal-body"   id="modal-body">Are you sure?</div>
       <div class="modal-actions">
-        <button class="btn btn--ghost"    id="modal-cancel">Cancel</button>
-        <button class="btn btn--primary"  id="modal-confirm">Confirm</button>
+        <button class="btn btn--ghost"   id="modal-cancel">Cancel</button>
+        <button class="btn btn--primary" id="modal-confirm">Confirm</button>
       </div>
     </div>
   </div>
@@ -379,6 +428,13 @@
   <!-- ── Toast ─────────────────────────────────────────────────────────────── -->
   <div class="toast" id="toast"></div>
 
+  <!-- ── Scripts (core first, then pages, then main) ───────────────────────── -->
+  <script src="core/api.js"></script>
+  <script src="core/toast.js"></script>
+  <script src="core/modal.js"></script>
+  <script src="pages/control.js"></script>
+  <script src="pages/settings.js"></script>
+  <script src="pages/update.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

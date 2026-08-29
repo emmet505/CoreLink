@@ -11,6 +11,7 @@
 #include "esp_netif.h"
 #include "lwip/ip4_addr.h"
 #include "system_monitor.h"
+#include "utils/OTA/ota_handler.h"
 #include "wifi_config_store.h"
 
 #define FILE_PATH_MAX 512
@@ -115,22 +116,6 @@ esp_err_t http_server_start(void) {
   };
   httpd_register_uri_handler(s_server, &root_uri);
 
-  httpd_uri_t css_uri = {
-      .uri = "/style.css",
-      .method = HTTP_GET,
-      .handler = static_handler,
-      .user_ctx = NULL,
-  };
-  httpd_register_uri_handler(s_server, &css_uri);
-
-  httpd_uri_t js_uri = {
-      .uri = "/script.js",
-      .method = HTTP_GET,
-      .handler = static_handler,
-      .user_ctx = NULL,
-  };
-  httpd_register_uri_handler(s_server, &js_uri);
-
   httpd_uri_t status_uri = {
       .uri = "/api/status",
       .method = HTTP_GET,
@@ -159,11 +144,35 @@ esp_err_t http_server_start(void) {
                                    .user_ctx = NULL};
   httpd_register_uri_handler(s_server, &settings_post_uri);
 
+  httpd_uri_t ota_firmware_uri = {
+      .uri = "/api/ota/firmware",
+      .method = HTTP_POST,
+      .handler = ota_firmware_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &ota_firmware_uri);
+
+  httpd_uri_t ota_webfs_uri = {
+      .uri = "/api/ota/webfs",
+      .method = HTTP_POST,
+      .handler = ota_webfs_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &ota_webfs_uri);
+
   esp_err_t cp_err = captive_portal_register(s_server);
   if (cp_err != ESP_OK) {
     ESP_LOGE(TAG, "captive portal register failed");
     return cp_err;
   }
+
+    httpd_uri_t static_wildcard_uri = {
+      .uri      = "/*",
+      .method   = HTTP_GET,
+      .handler  = static_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &static_wildcard_uri);
   return ESP_OK;
 }
 
@@ -412,11 +421,10 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
   /* password: only update if present and non-empty */
   const char* password = NULL;
   if (cJSON_IsString(j_password)) {
-    const char* p  = cJSON_GetStringValue(j_password);
+    const char* p = cJSON_GetStringValue(j_password);
     if (p && strlen(p) > 0) {
       password = p;
     }
-
   }
   const char* ssid = NULL;
   if (cJSON_IsString(j_ssid)) {
@@ -482,7 +490,7 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
       httpd_resp_set_status(req, "400 Bad Request");
       httpd_resp_sendstr(
           req, "{\"success\":false,\"error\":\"old_password required\"}");
-      
+
       return ESP_OK;
     }
 
@@ -555,18 +563,14 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
            cfg.channel, cfg.max_connections, cfg.dhcp, cfg.ssid, needs_reboot);
 
   httpd_resp_set_type(req, "application/json");
-httpd_resp_sendstr(
-    req,
-    needs_reboot
-        ? "{\"success\":true,\"reboot\":true}"
-        : "{\"success\":true,\"reboot\":false}"
-);
+  httpd_resp_sendstr(req, needs_reboot ? "{\"success\":true,\"reboot\":true}"
+                                       : "{\"success\":true,\"reboot\":false}");
 
-if (needs_reboot) {
+  if (needs_reboot) {
     ESP_LOGW(TAG, "Rebooting in 1500ms due to config change...");
     vTaskDelay(pdMS_TO_TICKS(1500));
     esp_restart();
-}
+  }
 
-return ESP_OK;
+  return ESP_OK;
 }
