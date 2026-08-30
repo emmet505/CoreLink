@@ -15,5 +15,6 @@ dependencies:
   #   # All dependencies of `main` are public by default.
   #   public: true
   joltwallet/littlefs: ^1.20.2
-  espressif/cjson: "^1.7.19"
+  espressif/cjson: ^1.7.19
 
+  espressif/led_strip: '*'

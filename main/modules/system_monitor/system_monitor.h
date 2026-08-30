@@ -1,8 +1,10 @@
 #pragma once
 
+#include "led_status.h"
+
 #include <stddef.h>
 #include <stdint.h>
-
+void system_monitor_check_health(void);
 
 typedef struct {
 

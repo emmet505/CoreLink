@@ -14,6 +14,7 @@
 #include "utils/OTA/ota_handler.h"
 #include "wifi_config_store.h"
 
+
 #define FILE_PATH_MAX 512
 #define FILE_BUFFER_SIZE 512
 #define SETTINGS_BODY_MAX 512
@@ -104,6 +105,7 @@ esp_err_t http_server_start(void) {
   ESP_LOGI(TAG, "Starting HTTP server");
 
   if (httpd_start(&s_server, &config) != ESP_OK) {
+    led_status_raise(LED_ERR_HTTP);
     ESP_LOGE(TAG, "HTTP server start failed");
     return ESP_FAIL;
   }

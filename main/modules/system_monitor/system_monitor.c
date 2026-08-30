@@ -3,6 +3,8 @@
 
 #include "system_monitor.h"
 
+#include "led_status.h"
+
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_heap_caps.h"
@@ -82,4 +84,21 @@ void system_monitor_get_status(system_status_t* status) {
 
   /* system */
   status->uptime_seconds = (uint64_t)(esp_timer_get_time() / 1000000ULL);
+}
+
+
+void system_monitor_check_health(void) {
+    system_status_t status;
+    system_monitor_get_status(&status);
+
+    if (status.internal_heap_usage >= 85.0f) {
+        led_status_clear_warn(LED_WARN_HEAP);
+        led_status_raise(LED_ERR_HEAP);
+    } else if (status.internal_heap_usage >= 70.0f) {
+        led_status_clear(LED_ERR_HEAP);
+        led_status_warn(LED_WARN_HEAP);
+    } else {
+        led_status_clear(LED_ERR_HEAP);
+        led_status_clear_warn(LED_WARN_HEAP);
+    }
 }

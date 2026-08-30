@@ -3,6 +3,9 @@
 #include "esp_littlefs.h"
 #include "esp_log.h"
 
+#include "led_status.h"
+
+
 static const char* TAG = "filesystem";
 
 esp_err_t filesystem_init(void) {
@@ -15,6 +18,7 @@ esp_err_t filesystem_init(void) {
   esp_err_t ret = esp_vfs_littlefs_register(&conf);
 
   if (ret != ESP_OK) {
+    led_status_raise(LED_ERR_FILESYSTEM);
     ESP_LOGE(TAG, "LittleFS mount failed (%s)", esp_err_to_name(ret));
     return ret;
   }

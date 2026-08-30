@@ -9,6 +9,7 @@ idf_component_register(
         "modules/http_server/http_server.c"
         "modules/filesystem/filesystem.c"
         "modules/system_monitor/system_monitor.c"
+        "modules/status/led_status.c"
 
     INCLUDE_DIRS
         "."
@@ -21,6 +22,7 @@ idf_component_register(
         "utils/captive_portal"
         "utils/Network"
         "utils/OTA"
+        "modules/status"
     REQUIRES
         esp_wifi
         esp_netif
@@ -32,4 +34,6 @@ idf_component_register(
         littlefs
         spi_flash
         app_update
+        led_strip
+        esp_driver_gpio
 )

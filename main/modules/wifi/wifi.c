@@ -10,6 +10,9 @@
 #include "wifi_config_store.h"
 #include "dns_server.h"
 
+#include "led_status.h"
+
+
 static const char* TAG = "WiFi";
 static esp_netif_t* netif_ap = NULL;
 static volatile int connected_clients = 0;
@@ -75,6 +78,14 @@ esp_err_t wifi_init(void) {
               .pmf_cfg = {.capable = true, .required = false},
           },
   };
+wifi_country_t country = {
+    .cc = "IR",
+    .schan = 1,
+    .nchan = 13,
+    .policy = WIFI_COUNTRY_POLICY_MANUAL,
+};
+esp_wifi_set_country(&country);
+
   memcpy(wifi_config.ap.ssid, cfg.ssid, sizeof(wifi_config.ap.ssid));
   memcpy(wifi_config.ap.password, cfg.password,
          sizeof(wifi_config.ap.password));
@@ -139,6 +150,7 @@ esp_err_t wifi_init(void) {
 
   if (esp_wifi_start() != ESP_OK) {
     ESP_LOGE(TAG, "Failed to start Wi-Fi");
+    led_status_raise(LED_ERR_WIFI);
     return ESP_FAIL;
   }
 
