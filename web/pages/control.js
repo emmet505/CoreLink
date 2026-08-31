@@ -119,7 +119,7 @@ function applyTelemetry(d) {
   setText(Control.telFlashSize, bytesToKB(d.flash_size));
   setText(Control.telUptime,    fmtUptime(d.uptime_seconds));
   setText(Control.telLastUpdated, new Date().toLocaleTimeString());
-
+if (Control.togLed) Control.togLed.checked = d.led_enabled;
   setOnline(true);
 }
 
@@ -219,11 +219,23 @@ function initSchedule() {
 // ── Peripherals ───────────────────────────────────────────────────────────────
 function initPeripherals() {
   const peripherals = [
-    { el: Control.togLed,   key: 'led'   },
+    //{ el: Control.togLed,   key: 'led'   },
     { el: Control.togFan,   key: 'fan'   },
     { el: Control.togLight, key: 'light' },
     { el: Control.togAuto,  key: 'auto'  },
   ];
+
+  Control.togLed.addEventListener('change', async () => {
+      const on = Control.togLed.checked;
+      try {
+          await API.setLedEnabled(on);
+          showToast(on ? 'Status LED enabled' : 'Status LED disabled', 'success');
+      } catch (err) {
+          Control.togLed.checked = !on;
+          showToast('Failed: ' + err.message, 'error');
+      }
+  });
+
 
   peripherals.forEach(({ el, key }) => {
     el.addEventListener('change', async () => {

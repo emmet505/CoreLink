@@ -13,6 +13,8 @@
 #include "system_monitor.h"
 #include "utils/OTA/ota_handler.h"
 #include "wifi_config_store.h"
+#include "led_handler.h"
+#include "led_status.h"
 
 
 #define FILE_PATH_MAX 512
@@ -175,6 +177,15 @@ esp_err_t http_server_start(void) {
       .user_ctx = NULL,
   };
   httpd_register_uri_handler(s_server, &static_wildcard_uri);
+
+
+  httpd_uri_t led_uri = {
+    .uri      = "/api/led",
+    .method   = HTTP_POST,
+    .handler  = led_handler,
+    .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &led_uri);
   return ESP_OK;
 }
 
@@ -246,6 +257,8 @@ static esp_err_t status_api_handler(httpd_req_t* req) {
     httpd_resp_send_500(req);
     return ESP_FAIL;
   }
+
+
   cJSON_AddNumberToObject(root, "heap_total", status.total_heap);
   cJSON_AddNumberToObject(root, "heap_free", status.free_heap);
   cJSON_AddNumberToObject(root, "heap_used", status.used_heap);
@@ -272,7 +285,7 @@ static esp_err_t status_api_handler(httpd_req_t* req) {
 
   cJSON_AddNumberToObject(root, "cpu_usage_core0", status.cpu_usage_core0);
   cJSON_AddNumberToObject(root, "cpu_usage_core1", status.cpu_usage_core1);
-
+  cJSON_AddBoolToObject(root, "led_enabled", led_status_is_enabled());
   char* json = cJSON_PrintUnformatted(root);
   cJSON_Delete(root);
 

@@ -27,6 +27,7 @@ const API = {
   reboot()           { return API.request('/api/reboot',     { method: 'POST' }); },
   factoryReset()     { return API.request('/api/factory',    { method: 'POST' }); },
   setSchedule(data)  { return API.request('/api/relay/schedule', { method: 'POST', body: JSON.stringify(data) }); },
+  setLedEnabled(enabled) { return API.request('/api/led', { method: 'POST', body: JSON.stringify({ enabled })}); },
 
   /**
    * Upload a binary file to an OTA endpoint.

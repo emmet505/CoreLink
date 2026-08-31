@@ -27,7 +27,7 @@ void led_status_warn(led_warning_t warn);
 void led_status_clear_warn(led_warning_t warn); 
 void led_status_enable(bool on);
 
+bool led_status_is_enabled(void);
 
-void let_status_enable(bool on);
 
 #endif

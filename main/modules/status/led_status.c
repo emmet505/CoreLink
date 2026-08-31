@@ -5,6 +5,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+
 #include "led_strip.h"
 #include "stdbool.h"
 
@@ -19,6 +22,14 @@ static TaskHandle_t       s_task     = NULL;
 static SemaphoreHandle_t  s_mutex    = NULL;
 static uint32_t           s_errors   = LED_ERR_NONE;
 static uint32_t           s_warnings = LED_WARN_NONE;
+
+
+static void led_nvs_save(void);
+static void led_nvs_load(void);
+
+
+static const char *NVS_NAMESPACE = "led_cfg";
+static const char *KEY_ENABLED   = "enabled";
 
 static void led_set_color(uint8_t r, uint8_t g, uint8_t b) {
   if (s_led == NULL) return;
@@ -63,13 +74,14 @@ static void led_task(void *arg) {
         }
     }
 }
+
 esp_err_t led_status_init(void) {
   s_mutex = xSemaphoreCreateMutex();
   if (s_mutex == NULL) {
     ESP_LOGE(TAG, "Failed to create mutex");
     return ESP_FAIL;
   }
-
+  led_nvs_load();
   led_strip_config_t strip_cfg = {
       .strip_gpio_num = LED_GPIO,
       .max_leds = 1,
@@ -130,4 +142,31 @@ void led_status_enable(bool on) {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     s_enable = on;
     xSemaphoreGive(s_mutex);
+    led_nvs_save();
+}
+
+bool led_status_is_enabled(void) {
+    if (s_mutex == NULL) return true;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    bool enabled = s_enable;
+    xSemaphoreGive(s_mutex);
+    return enabled;
+}
+
+
+static void led_nvs_save(void){
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return;
+    nvs_set_u8(handle, KEY_ENABLED, (uint8_t) s_enable);
+    nvs_commit(handle);
+    nvs_close(handle);
+}
+
+static void led_nvs_load() {
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) return;
+    uint8_t enabled = 1; // default enable
+    nvs_get_u8(handle,KEY_ENABLED, & enabled);
+    s_enable = (bool)enabled;
+    nvs_close(handle);
 }

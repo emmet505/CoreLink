@@ -10,6 +10,7 @@ idf_component_register(
         "modules/filesystem/filesystem.c"
         "modules/system_monitor/system_monitor.c"
         "modules/status/led_status.c"
+        "modules/http_server/led_handler.c"
 
     INCLUDE_DIRS
         "."
