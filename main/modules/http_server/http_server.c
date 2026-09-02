@@ -4,47 +4,30 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../../../.espressif/v6.0.1/esp-idf/components/esp_http_server/include/esp_http_server.h"
 #include "cJSON.h"
 #include "captive_portal.h"
+#include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "time_handler.h"
+#include "led_handler.h"
+#include "led_status.h"
 #include "lwip/ip4_addr.h"
+#include "sdkconfig.h"
 #include "system_monitor.h"
 #include "utils/OTA/ota_handler.h"
 #include "wifi_config_store.h"
-#include "led_handler.h"
-#include "led_status.h"
-
 
 #define FILE_PATH_MAX 512
 #define FILE_BUFFER_SIZE 512
 #define SETTINGS_BODY_MAX 512
 static const char* TAG = "http_server";
 
-/* forward declarations for handlers used before their definitions */
 static esp_err_t status_api_handler(httpd_req_t* req);
-static esp_err_t relay_schedule_handler(httpd_req_t* req);
 static esp_err_t settings_get_handler(httpd_req_t* req);
 static esp_err_t settings_post_handler(httpd_req_t* req);
-
-/* ---------------------------------------------------------------
- * Relay schedule state — written by POST /api/relay/schedule
- * Read by application logic to decide relay output.
- * --------------------------------------------------------------- */
-typedef struct {
-  bool enabled;
-  char start[6]; /* "HH:MM" null-terminated */
-  char stop[6];
-  char device_time[9]; /* "HH:MM:SS" — last known time from browser */
-} relay_schedule_t;
-
-static relay_schedule_t s_schedule = {
-    .enabled = false,
-    .start = "00:00",
-    .stop = "00:00",
-    .device_time = "00:00:00",
-};
 
 static esp_err_t serve_file(httpd_req_t* req, const char* path) {
   FILE* file = fopen(path, "r");
@@ -128,14 +111,6 @@ esp_err_t http_server_start(void) {
   };
   httpd_register_uri_handler(s_server, &status_uri);
 
-  httpd_uri_t schedule_uri = {
-      .uri = "/api/relay/schedule",
-      .method = HTTP_POST,
-      .handler = relay_schedule_handler,
-      .user_ctx = NULL,
-  };
-  httpd_register_uri_handler(s_server, &schedule_uri);
-
   httpd_uri_t settings_get_uri = {.uri = "/api/settings",
                                   .method = HTTP_GET,
                                   .handler = settings_get_handler,
@@ -170,83 +145,33 @@ esp_err_t http_server_start(void) {
     return cp_err;
   }
 
-    httpd_uri_t static_wildcard_uri = {
-      .uri      = "/*",
-      .method   = HTTP_GET,
-      .handler  = static_handler,
+  httpd_uri_t static_wildcard_uri = {
+      .uri = "/*",
+      .method = HTTP_GET,
+      .handler = static_handler,
       .user_ctx = NULL,
   };
   httpd_register_uri_handler(s_server, &static_wildcard_uri);
 
-
   httpd_uri_t led_uri = {
-    .uri      = "/api/led",
-    .method   = HTTP_POST,
-    .handler  = led_handler,
-    .user_ctx = NULL,
+      .uri = "/api/led",
+      .method = HTTP_POST,
+      .handler = led_handler,
+      .user_ctx = NULL,
   };
   httpd_register_uri_handler(s_server, &led_uri);
+
+  httpd_uri_t time_uri = {
+      .uri = "/api/time",
+      .method = HTTP_POST,
+      .handler = time_sync_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &time_uri);
   return ESP_OK;
 }
 
 httpd_handle_t http_server_get_handle(void) { return s_server; }
-
-/* ── POST /api/relay/schedule ────────────────────────────────────────────────
- *
- * Expected JSON body:
- * {
- *   "enabled":     true | false,
- *   "start":       "HH:MM",
- *   "stop":        "HH:MM",
- *   "device_time": "HH:MM:SS"   <- current browser time for clock sync
- * }
- *
- * Returns: { "ok": true } on success, HTTP 400 on bad input.
- */
-static esp_err_t relay_schedule_handler(httpd_req_t* req) {
-  char buf[256];
-  int received = httpd_req_recv(req, buf, sizeof(buf) - 1);
-  if (received <= 0) {
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Empty body");
-    return ESP_FAIL;
-  }
-  buf[received] = '\0';
-
-  cJSON* root = cJSON_Parse(buf);
-  if (!root) {
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-    return ESP_FAIL;
-  }
-
-  cJSON* j_enabled = cJSON_GetObjectItem(root, "enabled");
-  cJSON* j_start = cJSON_GetObjectItem(root, "start");
-  cJSON* j_stop = cJSON_GetObjectItem(root, "stop");
-  cJSON* j_device_time = cJSON_GetObjectItem(root, "device_time");
-
-  if (!cJSON_IsBool(j_enabled) || !cJSON_IsString(j_start) ||
-      !cJSON_IsString(j_stop) || !cJSON_IsString(j_device_time)) {
-    cJSON_Delete(root);
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
-                        "Missing or invalid fields");
-    return ESP_FAIL;
-  }
-
-  s_schedule.enabled = cJSON_IsTrue(j_enabled);
-  strlcpy(s_schedule.start, j_start->valuestring, sizeof(s_schedule.start));
-  strlcpy(s_schedule.stop, j_stop->valuestring, sizeof(s_schedule.stop));
-  strlcpy(s_schedule.device_time, j_device_time->valuestring,
-          sizeof(s_schedule.device_time));
-
-  cJSON_Delete(root);
-
-  ESP_LOGI(TAG, "Schedule updated: enabled=%d start=%s stop=%s device_time=%s",
-           s_schedule.enabled, s_schedule.start, s_schedule.stop,
-           s_schedule.device_time);
-
-  httpd_resp_set_type(req, "application/json");
-  httpd_resp_sendstr(req, "{\"ok\":true}");
-  return ESP_OK;
-}
 
 static esp_err_t status_api_handler(httpd_req_t* req) {
   system_status_t status;
@@ -257,7 +182,6 @@ static esp_err_t status_api_handler(httpd_req_t* req) {
     httpd_resp_send_500(req);
     return ESP_FAIL;
   }
-
 
   cJSON_AddNumberToObject(root, "heap_total", status.total_heap);
   cJSON_AddNumberToObject(root, "heap_free", status.free_heap);
@@ -550,7 +474,7 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
 
   cJSON_Delete(root);
 
-  /* 9. Save to NVS */
+
   esp_err_t err = wifi_config_save(&cfg);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "wifi_config_save failed: %s", esp_err_to_name(err));

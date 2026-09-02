@@ -3,16 +3,19 @@
 
 #include "captive_portal.h"
 #include "esp_event.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "time_handler.h"
 #include "led_status.h"
 #include "modules/filesystem/filesystem.h"
 #include "modules/http_server/http_server.h"
 #include "modules/system_monitor/system_monitor.h"
 #include "modules/wifi/wifi.h"
 #include "nvs_flash.h"
+#include "reset_button.h"
 #include "utils/Network/dns_server.h"
 #include "wifi_config_store.h"
 
@@ -20,21 +23,23 @@ static const char* TAG = "APP";
 
 static void monitor_task(void* pvParameters);
 
-static void heap_stress_task(void* pvParameters);
 
 static void monitor_task(void* pvParameters) {
   while (1) {
+    time_print_current();
     // system_monitor_check_health();
     int clients = wifi_get_connected_clients();
     ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients,
              xPortGetCoreID());
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(2000));
   }
 }
 
+
+
 void app_main(void) {
-  ESP_LOGI(TAG, "Simple IoT House");
-//nvs_flash_erase();
+  ESP_LOGI(TAG, "Simple IoT House (core %d)", xPortGetCoreID());
+
   esp_err_t ret = nvs_flash_init();
 
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
@@ -44,27 +49,38 @@ void app_main(void) {
     ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
-  ESP_LOGI(TAG, "NVS ready");
+  ESP_LOGI(TAG, "NVS ready (core %d)", xPortGetCoreID());
+
+  ESP_ERROR_CHECK(reset_button_init());
+  ESP_LOGI(TAG, "Reset button ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(esp_netif_init());
-  ESP_LOGI(TAG, "Network stack ready");
+  ESP_LOGI(TAG, "Network stack ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(esp_event_loop_create_default());
-  ESP_LOGI(TAG, "Event loop ready");
+  ESP_LOGI(TAG, "Event loop ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(led_status_init());
+  ESP_LOGI(TAG, "LED status ready (core %d)", xPortGetCoreID());
 
-  
   esp_err_t err = wifi_init();
-  if (err != ESP_OK){
+  if (err != ESP_OK) {
     led_status_raise(LED_ERR_WIFI);
     ESP_LOGE(TAG, "WiFi init failed: %s", esp_err_to_name(err));
   }
+  ESP_LOGI(TAG, "WiFi ready (core %d)", xPortGetCoreID());
+
   ESP_ERROR_CHECK(filesystem_init());
+  ESP_LOGI(TAG, "Filesystem ready (core %d)", xPortGetCoreID());
+
   ESP_ERROR_CHECK(http_server_start());
+  ESP_LOGI(TAG, "HTTP server ready (core %d)", xPortGetCoreID());
 
   xTaskCreate(monitor_task, "monitor", 2048, NULL, tskIDLE_PRIORITY, NULL);
 
+
+
+  // Uncomment to heap stress test
   // xTaskCreate(heap_stress_task, "heap_stress", 4096, NULL, tskIDLE_PRIORITY,
   //             NULL);
 

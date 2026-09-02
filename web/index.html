@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- ── Mobile top bar ──────────────────────────────────────────────────── -->
+  <!-- ── Mobile top bar ─────────────────────────────────────── -->
   <div class="topbar" id="topbar">
     <button class="topbar-menu-btn" id="menu-btn" aria-label="Open menu">
       <span></span><span></span><span></span>
@@ -20,21 +20,18 @@
     <span class="status-dot" id="topbar-status-dot"></span>
   </div>
 
-  <!-- ── Sidebar overlay ──────────────────────────────────────────────────── -->
+  <!-- ── Sidebar overlay ────────────────────────────────────── -->
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <!-- ── Sidebar ────────────────────────────────────────────── -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-icon">⬡</div>
       <div class="brand-text">
-        <span class="brand-name">CoreLink
-          
-        </span>
+        <span class="brand-name">CoreLink</span>
         <span class="brand-sub">Device Control</span>
       </div>
     </div>
-
     <ul class="nav-list">
       <li class="nav-item active" data-page="control">
         <span class="nav-icon">⚡</span>
@@ -49,7 +46,6 @@
         <span class="nav-label">Firmware Update</span>
       </li>
     </ul>
-
     <div class="sidebar-footer">
       <div class="device-status">
         <span class="status-dot" id="sidebar-status-dot"></span>
@@ -58,218 +54,255 @@
     </div>
   </nav>
 
-  <!-- ── Main content ─────────────────────────────────────────────────────── -->
+  <!-- ── Main ───────────────────────────────────────────────── -->
   <main class="main" id="main">
 
-    <!-- ══ Device Control Page ══════════════════════════════════════════════ -->
+    <!-- ══ Device Control ════════════════════════════════════ -->
     <section class="page active" id="page-control">
       <header class="page-header">
         <h1 class="page-title">Device Control</h1>
-        <p class="page-subtitle">Relay, peripherals, and live system status</p>
+        <p class="page-subtitle">Relay outputs and live system status</p>
       </header>
 
       <div class="grid">
 
-        <!-- Relay Control -->
-        <div class="card card--accent">
+        <!-- Relay 1 -->
+        <div class="card card--accent relay-card">
           <div class="card-header">
-            <span class="card-title">Main Relay</span>
-            <span class="relay-badge" id="relay-badge">OFF</span>
+            <div class="relay-card-title">
+              <span class="relay-number">1</span>
+              <span class="card-title">Relay 1</span>
+            </div>
+            <span class="relay-badge" id="relay-badge-1">OFF</span>
           </div>
-          <p class="card-desc">Controls the primary output relay. Changes take effect immediately.</p>
+          <div class="relay-indicator" id="relay-indicator-1"></div>
           <div class="relay-controls">
-            <button class="btn btn--primary" id="btn-relay-on">Turn ON</button>
-            <button class="btn btn--ghost"   id="btn-relay-off">Turn OFF</button>
+            <button class="btn btn--primary btn--sm" id="btn-relay-1-on">ON</button>
+            <button class="btn btn--ghost btn--sm" id="btn-relay-1-off">OFF</button>
           </div>
-          <div class="relay-indicator" id="relay-indicator"></div>
-        </div>
-
-        <!-- Relay Schedule -->
-        <div class="card card--accent" id="schedule-card">
-          <div class="card-header">
-            <span class="card-title">Relay Schedule</span>
-            <span class="schedule-badge" id="schedule-badge">OFF</span>
-          </div>
-          <p class="card-desc">Set a daily on/off window. The relay will switch automatically based on device time.</p>
-          <div class="schedule-row">
-            <div class="field-group">
-              <label class="field-label" for="inp-schedule-start">Start Time</label>
-              <input class="field-input mono" type="time" id="inp-schedule-start" />
+          <div class="relay-schedule-block">
+            <div class="relay-schedule-header">
+              <span class="relay-schedule-label">Schedule</span>
+              <span class="schedule-badge" id="schedule-badge-1">OFF</span>
             </div>
-            <div class="field-group">
-              <label class="field-label" for="inp-schedule-stop">Stop Time</label>
-              <input class="field-input mono" type="time" id="inp-schedule-stop" />
+            <div class="schedule-row">
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-1-start">Start</label>
+                <input class="field-input mono" type="time" id="inp-schedule-1-start" />
+              </div>
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-1-stop">Stop</label>
+                <input class="field-input mono" type="time" id="inp-schedule-1-stop" />
+              </div>
+            </div>
+            <div class="relay-schedule-footer">
+              <label class="toggle-switch toggle-switch--sm">
+                <input type="checkbox" id="tog-schedule-1" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+              <button class="btn btn--ghost btn--sm" id="btn-save-schedule-1">Apply</button>
             </div>
           </div>
-          <div class="toggle-row toggle-row--field" style="margin-top:0.25rem">
-            <span class="field-label">Enable Schedule</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="tog-schedule" />
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
-          </div>
-          <div class="card-actions">
-            <button class="btn btn--primary" id="btn-save-schedule">Apply Schedule</button>
-          </div>
         </div>
 
-        <!-- Peripherals -->
-        <div class="card">
+        <!-- Relay 2 -->
+        <div class="card card--accent relay-card">
           <div class="card-header">
-            <span class="card-title">Peripherals</span>
+            <div class="relay-card-title">
+              <span class="relay-number">2</span>
+              <span class="card-title">Relay 2</span>
+            </div>
+            <span class="relay-badge" id="relay-badge-2">OFF</span>
           </div>
-          <ul class="toggle-list">
-            <li class="toggle-row">
-              <span class="toggle-label">Status LED</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="tog-led" />
+          <div class="relay-indicator" id="relay-indicator-2"></div>
+          <div class="relay-controls">
+            <button class="btn btn--primary btn--sm" id="btn-relay-2-on">ON</button>
+            <button class="btn btn--ghost btn--sm" id="btn-relay-2-off">OFF</button>
+          </div>
+          <div class="relay-schedule-block">
+            <div class="relay-schedule-header">
+              <span class="relay-schedule-label">Schedule</span>
+              <span class="schedule-badge" id="schedule-badge-2">OFF</span>
+            </div>
+            <div class="schedule-row">
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-2-start">Start</label>
+                <input class="field-input mono" type="time" id="inp-schedule-2-start" />
+              </div>
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-2-stop">Stop</label>
+                <input class="field-input mono" type="time" id="inp-schedule-2-stop" />
+              </div>
+            </div>
+            <div class="relay-schedule-footer">
+              <label class="toggle-switch toggle-switch--sm">
+                <input type="checkbox" id="tog-schedule-2" />
                 <span class="toggle-track"><span class="toggle-thumb"></span></span>
               </label>
-            </li>
-            <li class="toggle-row">
-              <span class="toggle-label">Cooling Fan</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="tog-fan" />
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              </label>
-            </li>
-            <li class="toggle-row">
-              <span class="toggle-label">Ambient Light</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="tog-light" />
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              </label>
-            </li>
-            <li class="toggle-row">
-              <span class="toggle-label">Auto Mode</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="tog-auto" />
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              </label>
-            </li>
-          </ul>
+              <button class="btn btn--ghost btn--sm" id="btn-save-schedule-2">Apply</button>
+            </div>
+          </div>
         </div>
 
-        <!-- Telemetry -->
-        <div class="card telemetry-card" id="telemetry-card">
+        <!-- Relay 3 -->
+        <div class="card card--accent relay-card">
+          <div class="card-header">
+            <div class="relay-card-title">
+              <span class="relay-number">3</span>
+              <span class="card-title">Relay 3</span>
+            </div>
+            <span class="relay-badge" id="relay-badge-3">OFF</span>
+          </div>
+          <div class="relay-indicator" id="relay-indicator-3"></div>
+          <div class="relay-controls">
+            <button class="btn btn--primary btn--sm" id="btn-relay-3-on">ON</button>
+            <button class="btn btn--ghost btn--sm" id="btn-relay-3-off">OFF</button>
+          </div>
+          <div class="relay-schedule-block">
+            <div class="relay-schedule-header">
+              <span class="relay-schedule-label">Schedule</span>
+              <span class="schedule-badge" id="schedule-badge-3">OFF</span>
+            </div>
+            <div class="schedule-row">
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-3-start">Start</label>
+                <input class="field-input mono" type="time" id="inp-schedule-3-start" />
+              </div>
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-3-stop">Stop</label>
+                <input class="field-input mono" type="time" id="inp-schedule-3-stop" />
+              </div>
+            </div>
+            <div class="relay-schedule-footer">
+              <label class="toggle-switch toggle-switch--sm">
+                <input type="checkbox" id="tog-schedule-3" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+              <button class="btn btn--ghost btn--sm" id="btn-save-schedule-3">Apply</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Relay 4 -->
+        <div class="card card--accent relay-card">
+          <div class="card-header">
+            <div class="relay-card-title">
+              <span class="relay-number">4</span>
+              <span class="card-title">Relay 4</span>
+            </div>
+            <span class="relay-badge" id="relay-badge-4">OFF</span>
+          </div>
+          <div class="relay-indicator" id="relay-indicator-4"></div>
+          <div class="relay-controls">
+            <button class="btn btn--primary btn--sm" id="btn-relay-4-on">ON</button>
+            <button class="btn btn--ghost btn--sm" id="btn-relay-4-off">OFF</button>
+          </div>
+          <div class="relay-schedule-block">
+            <div class="relay-schedule-header">
+              <span class="relay-schedule-label">Schedule</span>
+              <span class="schedule-badge" id="schedule-badge-4">OFF</span>
+            </div>
+            <div class="schedule-row">
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-4-start">Start</label>
+                <input class="field-input mono" type="time" id="inp-schedule-4-start" />
+              </div>
+              <div class="field-group field-group--sm">
+                <label class="field-label" for="inp-schedule-4-stop">Stop</label>
+                <input class="field-input mono" type="time" id="inp-schedule-4-stop" />
+              </div>
+            </div>
+            <div class="relay-schedule-footer">
+              <label class="toggle-switch toggle-switch--sm">
+                <input type="checkbox" id="tog-schedule-4" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+              <button class="btn btn--ghost btn--sm" id="btn-save-schedule-4">Apply</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="card status-card">
           <div class="card-header">
             <span class="card-title">System Status</span>
-            <span class="status-dot" id="telemetry-status-dot"></span>
-          </div>
-
-          <div class="tel-section-label">Heap (total)</div>
-          <div class="telemetry-grid">
-            <div class="telemetry-group">
-              <div class="telemetry-label">Total</div>
-              <div class="telemetry-value mono" id="tel-heap-total">—</div>
-            </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Free</div>
-              <div class="telemetry-value mono" id="tel-heap-free">—</div>
-            </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Used</div>
-              <div class="telemetry-value mono" id="tel-heap-used">—</div>
-            </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Min Free</div>
-              <div class="telemetry-value mono" id="tel-heap-min-free">—</div>
-            </div>
-            <div class="telemetry-group telemetry-group--wide">
-              <div class="telemetry-label">
-                Usage
-                <span class="telemetry-pct mono" id="tel-heap-usage">—</span>
-              </div>
-              <div class="telemetry-bar-wrap">
-                <div class="telemetry-bar" id="tel-heap-bar"></div>
-              </div>
+            <div class="status-card-meta">
+              <span class="mono status-uptime" id="tel-uptime">—</span>
+              <span class="status-dot" id="telemetry-status-dot"></span>
             </div>
           </div>
 
-          <div class="tel-section-label">Internal RAM</div>
-          <div class="telemetry-grid">
-            <div class="telemetry-group">
-              <div class="telemetry-label">Total</div>
-              <div class="telemetry-value mono" id="tel-iram-total">—</div>
-            </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Free</div>
-              <div class="telemetry-value mono" id="tel-iram-free">—</div>
-            </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Used</div>
-              <div class="telemetry-value mono" id="tel-iram-used">—</div>
-            </div>
-            <div class="telemetry-group telemetry-group--wide">
-              <div class="telemetry-label">
-                Usage
-                <span class="telemetry-pct mono" id="tel-iram-usage">—</span>
+          <div class="status-bars">
+            <div class="status-bar-row">
+              <span class="status-bar-label">Heap</span>
+              <div class="status-bar-track">
+                <div class="status-bar-fill" id="tel-heap-bar"></div>
               </div>
-              <div class="telemetry-bar-wrap">
-                <div class="telemetry-bar" id="tel-iram-bar"></div>
+              <span class="status-bar-pct mono" id="tel-heap-usage">—</span>
+            </div>
+            <div class="status-bar-row">
+              <span class="status-bar-label">IRAM</span>
+              <div class="status-bar-track">
+                <div class="status-bar-fill" id="tel-iram-bar"></div>
               </div>
+              <span class="status-bar-pct mono" id="tel-iram-usage">—</span>
+            </div>
+            <div class="status-bar-row">
+              <span class="status-bar-label">PSRAM</span>
+              <div class="status-bar-track">
+                <div class="status-bar-fill" id="tel-psram-bar"></div>
+              </div>
+              <span class="status-bar-pct mono" id="tel-psram-usage">—</span>
             </div>
           </div>
 
-          <div class="tel-section-label">PSRAM</div>
-          <div class="telemetry-grid">
-            <div class="telemetry-group">
-              <div class="telemetry-label">Total</div>
-              <div class="telemetry-value mono" id="tel-psram-total">—</div>
+          <div class="status-chips">
+            <div class="status-chip">
+              <span class="status-chip-label">Free Heap</span>
+              <span class="status-chip-val mono" id="tel-heap-free">—</span>
             </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Free</div>
-              <div class="telemetry-value mono" id="tel-psram-free">—</div>
+            <div class="status-chip">
+              <span class="status-chip-label">Min Free</span>
+              <span class="status-chip-val mono" id="tel-heap-min-free">—</span>
             </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Used</div>
-              <div class="telemetry-value mono" id="tel-psram-used">—</div>
+            <div class="status-chip">
+              <span class="status-chip-label">Free IRAM</span>
+              <span class="status-chip-val mono" id="tel-iram-free">—</span>
             </div>
-            <div class="telemetry-group telemetry-group--wide">
-              <div class="telemetry-label">
-                Usage
-                <span class="telemetry-pct mono" id="tel-psram-usage">—</span>
-              </div>
-              <div class="telemetry-bar-wrap">
-                <div class="telemetry-bar" id="tel-psram-bar"></div>
-              </div>
+            <div class="status-chip">
+              <span class="status-chip-label">Free PSRAM</span>
+              <span class="status-chip-val mono" id="tel-psram-free">—</span>
             </div>
-          </div>
-
-          <div class="tel-section-label">Device</div>
-          <div class="telemetry-grid telemetry-grid--device">
-            <div class="telemetry-group">
-              <div class="telemetry-label">CPU Cores</div>
-              <div class="telemetry-value mono" id="tel-cpu-cores">—</div>
+            <div class="status-chip">
+              <span class="status-chip-label">CPU Cores</span>
+              <span class="status-chip-val mono" id="tel-cpu-cores">—</span>
             </div>
-            <div class="telemetry-group">
-              <div class="telemetry-label">Flash Size</div>
-              <div class="telemetry-value mono" id="tel-flash-size">—</div>
-            </div>
-            <div class="telemetry-group telemetry-group--wide telemetry-group--uptime">
-              <div class="telemetry-label">Uptime</div>
-              <div class="telemetry-value telemetry-value--uptime mono" id="tel-uptime">—</div>
+            <div class="status-chip">
+              <span class="status-chip-label">Flash</span>
+              <span class="status-chip-val mono" id="tel-flash-size">—</span>
             </div>
           </div>
 
-          <div class="telemetry-footer">
-            Last updated: <span class="mono" id="tel-last-updated">never</span>
+          <div class="status-footer">
+            Updated <span class="mono" id="tel-last-updated">never</span>
           </div>
         </div>
 
         <!-- Emergency Stop -->
-        <div class="card card--danger">
-          <div class="card-header">
-            <span class="card-title">Emergency Stop</span>
+        <div class="card estop-card">
+          <div class="estop-inner">
+            <div class="estop-info">
+              <div class="card-title" style="margin-bottom:0.3rem">Emergency Stop</div>
+              <p class="card-desc" style="margin:0">Cuts all relay outputs immediately.</p>
+            </div>
+            <button class="btn btn--estop btn--estop-inline" id="btn-estop">⬛ STOP</button>
           </div>
-          <p class="card-desc">Immediately cuts power to all outputs. No confirmation required.</p>
-          <button class="btn btn--estop" id="btn-estop">⬛ EMERGENCY STOP</button>
         </div>
 
       </div><!-- /grid -->
     </section>
 
-    <!-- ══ Settings Page ════════════════════════════════════════════════════ -->
+    <!-- ══ Settings ═══════════════════════════════════════════ -->
     <section class="page" id="page-settings">
       <header class="page-header">
         <h1 class="page-title">Settings</h1>
@@ -336,40 +369,58 @@
           </div>
         </div>
 
-        <!-- Device Actions -->
+        <!-- Device Actions + LED -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Device Actions</span>
+            <span class="card-title">Device</span>
           </div>
-          <p class="card-desc">Restart applies saved settings. Factory reset clears all configuration.</p>
-          <div class="action-list">
-            <button class="btn btn--ghost btn--block" id="btn-reboot">↺ Restart Device</button>
-            <button class="btn btn--danger btn--block" id="btn-factory">⚠ Factory Reset</button>
+
+          <div class="device-action-list">
+            <div class="device-action-row">
+              <div class="device-action-info">
+                <span class="device-action-name">Status LED</span>
+                <span class="device-action-desc">RGB indicator on GPIO 48</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="tog-led" checked />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="device-action-row">
+              <div class="device-action-info">
+                <span class="device-action-name">Restart Device</span>
+                <span class="device-action-desc">Apply saved settings</span>
+              </div>
+              <button class="btn btn--ghost btn--sm" id="btn-reboot">↺ Restart</button>
+            </div>
+            <div class="device-action-row device-action-row--danger">
+              <div class="device-action-info">
+                <span class="device-action-name">Factory Reset</span>
+                <span class="device-action-desc">Erase all configuration</span>
+              </div>
+              <button class="btn btn--danger btn--sm" id="btn-factory">⚠ Reset</button>
+            </div>
           </div>
         </div>
 
       </div><!-- /grid -->
     </section>
 
-    <!-- ══ Firmware Update Page ══════════════════════════════════════════════ -->
+    <!-- ══ Firmware Update ════════════════════════════════════ -->
     <section class="page" id="page-update">
       <header class="page-header">
         <h1 class="page-title">Firmware Update</h1>
         <p class="page-subtitle">Upload firmware and web files over the air</p>
       </header>
-
       <div class="grid">
-
         <div class="card card--wide card--accent">
           <div class="card-header">
             <span class="card-title">OTA Update</span>
           </div>
           <p class="card-desc">
-            Select one or both files. Each file is optional — only upload what has changed.
-            The device will reboot automatically when the upload is complete.
+            Select one or both files. Each is optional — only upload what has changed.
+            The device reboots automatically when done.
           </p>
-
-          <!-- Firmware -->
           <div class="ota-row">
             <div class="ota-row-header">
               <span class="ota-label">Firmware</span>
@@ -386,8 +437,6 @@
               <div class="ota-bar" id="ota-firmware-bar"></div>
             </div>
           </div>
-
-          <!-- WebFS -->
           <div class="ota-row">
             <div class="ota-row-header">
               <span class="ota-label">Web Files</span>
@@ -404,22 +453,20 @@
               <div class="ota-bar" id="ota-webfs-bar"></div>
             </div>
           </div>
-
           <div class="card-actions" style="margin-top:1.25rem">
             <button class="btn btn--primary" id="btn-ota-update">↑ Upload & Reboot</button>
           </div>
         </div>
-
-      </div><!-- /grid -->
+      </div>
     </section>
 
   </main>
 
-  <!-- ── Confirm Modal ─────────────────────────────────────────────────────── -->
+  <!-- ── Modal ──────────────────────────────────────────────── -->
   <div class="modal-backdrop" id="modal-backdrop">
     <div class="modal" id="modal">
-      <div class="modal-title"  id="modal-title">Confirm Action</div>
-      <div class="modal-body"   id="modal-body">Are you sure?</div>
+      <div class="modal-title" id="modal-title">Confirm Action</div>
+      <div class="modal-body"  id="modal-body">Are you sure?</div>
       <div class="modal-actions">
         <button class="btn btn--ghost"   id="modal-cancel">Cancel</button>
         <button class="btn btn--primary" id="modal-confirm">Confirm</button>
@@ -427,10 +474,9 @@
     </div>
   </div>
 
-  <!-- ── Toast ─────────────────────────────────────────────────────────────── -->
+  <!-- ── Toast ──────────────────────────────────────────────── -->
   <div class="toast" id="toast"></div>
 
-  <!-- ── Scripts (core first, then pages, then main) ───────────────────────── -->
   <script src="core/api.js"></script>
   <script src="core/toast.js"></script>
   <script src="core/modal.js"></script>

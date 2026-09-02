@@ -12,6 +12,24 @@ let _sidebarOverlay = null;
 let _navItems       = null;
 let _pages          = null;
 
+
+function syncDeviceTime() {
+  if (sessionStorage.getItem('time_synced')) return;
+
+  const now = new Date();
+  API.request('/api/time', {
+    method: 'POST',
+    body: JSON.stringify({
+      hour:   now.getHours(),
+      minute: now.getMinutes(),
+      second: now.getSeconds(),
+    }),
+  }).then(() => {
+    sessionStorage.setItem('time_synced', '1');
+  }).catch(err => console.warn('[time] sync failed:', err.message));
+}
+
+
 function closeSidebar() {
   _sidebarEl.classList.remove('open');
   _sidebarOverlay.classList.remove('open');
@@ -63,4 +81,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initControl();
   initSettings();
   initUpdate();
+  syncDeviceTime();
 });

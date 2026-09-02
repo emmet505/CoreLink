@@ -157,13 +157,14 @@ esp_wifi_set_country(&country);
 dns_server_config_t dns_config = DNS_SERVER_CONFIG_SINGLE("*", "WIFI_AP_DEF");
 start_dns_server(&dns_config);
 
-
+  
   ESP_LOGI(TAG, "Wi-Fi AP initialized");
   ESP_LOGI(TAG, "SSID: %s", cfg.ssid);
   ESP_LOGI(TAG, "Password: %s", cfg.password);
   ESP_LOGI(TAG, "IP: 192.168.4.1");
   ESP_LOGI(TAG, "Channel: %u", cfg.channel);
   ESP_LOGI(TAG, "Max connections: %u", cfg.max_connections);
+  
 
   return ESP_OK;
 }

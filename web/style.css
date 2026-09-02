@@ -937,3 +937,276 @@ body { display: flex; min-height: 100vh; }
   .ota-file-wrap { flex-direction: column; align-items: flex-start; }
   .ota-file-btn  { width: 100%; justify-content: center; }
 }
+
+/* ── Relay Cards ────────────────────────────────────────────── */
+.relay-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.relay-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.btn--sm {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem;
+}
+
+.relay-schedule-block {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+}
+
+.relay-schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.relay-schedule-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.relay-schedule-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.65rem;
+}
+
+.toggle-switch--sm .toggle-track {
+  width: 32px;
+  height: 18px;
+}
+
+.toggle-switch--sm .toggle-thumb {
+  width: 12px;
+  height: 12px;
+  top: 3px;
+  left: 3px;
+}
+
+.toggle-switch--sm input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(14px);
+}
+
+.field-group--sm {
+  margin-bottom: 0;
+}
+
+.field-group--sm .field-input {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+/* ── Compact System Status ──────────────────────────────────── */
+.status-card {
+  grid-column: 1 / -1;
+}
+
+.status-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.status-uptime {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.status-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.status-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.status-bar-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: 2.8rem;
+  flex-shrink: 0;
+}
+
+.status-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.status-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s ease, background 0.3s;
+}
+
+.status-bar-fill.warn { background: var(--warn); }
+.status-bar-fill.crit { background: var(--danger); }
+
+.status-bar-pct {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  width: 3rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.status-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.status-chip {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+}
+
+.status-chip-label {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+}
+
+.status-chip-val {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.status-footer {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ── Emergency Stop inline ──────────────────────────────────── */
+.estop-card {
+  grid-column: 1 / -1;
+  border-top: 3px solid var(--danger);
+  padding: 1rem 1.25rem;
+}
+
+.estop-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.estop-info .card-title { color: var(--danger); }
+
+.btn--estop-inline {
+  width: auto;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Device Action List (Settings) ──────────────────────────── */
+.device-action-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.device-action-row:last-child { border-bottom: none; }
+
+.device-action-row--danger .device-action-name { color: var(--danger); }
+
+.device-action-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.device-action-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.device-action-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ── OTA styles (carry over) ────────────────────────────────── */
+.ota-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--bg-input);
+}
+.ota-row-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; }
+.ota-label { font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+.ota-hint  { font-size: 0.7rem; color: var(--text-muted); background: var(--surface-2); padding: 0.1rem 0.4rem; border-radius: 4px; }
+.ota-file-wrap { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.ota-file-btn  { display: inline-flex; align-items: center; padding: 0.4rem 0.9rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: background 0.15s, border-color 0.15s; white-space: nowrap; }
+.ota-file-btn:hover { background: var(--surface-2); border-color: var(--accent); color: var(--accent); }
+.ota-file-btn input[type="file"] { display: none; }
+.ota-status { font-size: 0.78rem; color: var(--text-muted); flex: 1; }
+.ota-status.uploading { color: var(--accent); }
+.ota-status.success   { color: #16a34a; font-weight: 600; }
+.ota-status.error     { color: var(--danger); font-weight: 600; }
+.ota-bar-wrap { height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 0.65rem; display: none; }
+.ota-bar-wrap.visible { display: block; }
+.ota-bar { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .status-chips { grid-template-columns: repeat(2, 1fr); }
+  .estop-inner  { flex-direction: column; align-items: flex-start; }
+  .btn--estop-inline { width: 100%; }
+  .ota-file-wrap { flex-direction: column; align-items: flex-start; }
+  .ota-file-btn  { width: 100%; justify-content: center; }
+}

@@ -18,22 +18,23 @@ const API = {
     return res.json();
   },
 
-  getStatus()        { return API.request('/api/status'); },
-  getSettings()      { return API.request('/api/settings'); },
-  setRelay(state)    { return API.request('/api/relay',      { method: 'POST', body: JSON.stringify({ state }) }); },
-  setPeripheral(k,v) { return API.request('/api/peripheral', { method: 'POST', body: JSON.stringify({ [k]: v }) }); },
-  emergencyStop()    { return API.request('/api/estop',      { method: 'POST' }); },
-  saveSettings(data) { return API.request('/api/settings',   { method: 'POST', body: JSON.stringify(data) }); },
-  reboot()           { return API.request('/api/reboot',     { method: 'POST' }); },
-  factoryReset()     { return API.request('/api/factory',    { method: 'POST' }); },
-  setSchedule(data)  { return API.request('/api/relay/schedule', { method: 'POST', body: JSON.stringify(data) }); },
-  setLedEnabled(enabled) { return API.request('/api/led', { method: 'POST', body: JSON.stringify({ enabled })}); },
+  getStatus()            { return API.request('/api/status'); },
+  getSettings()          { return API.request('/api/settings'); },
+  setRelay(state)        { return API.request('/api/relay',          { method: 'POST', body: JSON.stringify({ state }) }); },
+  setPeripheral(k,v)     { return API.request('/api/peripheral',     { method: 'POST', body: JSON.stringify({ [k]: v }) }); },
+  emergencyStop()        { return API.request('/api/estop',          { method: 'POST' }); },
+  saveSettings(data)     { return API.request('/api/settings',       { method: 'POST', body: JSON.stringify(data) }); },
+  reboot()               { return API.request('/api/reboot',         { method: 'POST' }); },
+  factoryReset()         { return API.request('/api/factory',        { method: 'POST' }); },
+  setSchedule(data)      { return API.request('/api/relay/schedule', { method: 'POST', body: JSON.stringify(data) }); },
+  setLedEnabled(enabled) { return API.request('/api/led',            { method: 'POST', body: JSON.stringify({ enabled })}); },
+  
 
   /**
    * Upload a binary file to an OTA endpoint.
    * Uses fetch with raw binary body (no JSON).
-   * @param {string} endpoint  - '/api/ota/firmware' or '/api/ota/webfs'
-   * @param {File}   file      - File object from <input type="file">
+   * @param {string}   endpoint  - '/api/ota/firmware' or '/api/ota/webfs'
+   * @param {File}     file      - File object from <input type="file">
    * @param {function} onProgress - callback(percent: number)
    */
   async otaUpload(endpoint, file, onProgress) {

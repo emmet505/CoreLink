@@ -1,64 +1,42 @@
 /* ============================================================
    pages/control.js  —  Device Control page
-   Relay · Schedule · Peripherals · Telemetry · Emergency Stop
+   4 Relay cards · Telemetry · Emergency Stop
    ============================================================ */
 
 'use strict';
 
-// ── DOM refs ──────────────────────────────────────────────────────────────────
+// ── DOM refs ──────────────────────────────────────────────────
 const Control = {
-  // Relay
-  btnRelayOn:      null,
-  btnRelayOff:     null,
-  relayBadge:      null,
-  relayIndicator:  null,
-
-  // Schedule
-  scheduleBadge:    null,
-  inpScheduleStart: null,
-  inpScheduleStop:  null,
-  togSchedule:      null,
-  btnSaveSchedule:  null,
-
-  // Peripherals
-  togLed:   null,
-  togFan:   null,
-  togLight: null,
-  togAuto:  null,
-
-  // Emergency stop
-  btnEstop: null,
+  // Relays (arrays indexed 0–3, mapped to relay 1–4)
+  relays: [],
 
   // Telemetry
   telDot:         null,
   telLastUpdated: null,
-  telHeapTotal:   null,
   telHeapFree:    null,
-  telHeapUsed:    null,
   telHeapMinFree: null,
   telHeapUsage:   null,
   telHeapBar:     null,
-  telIramTotal:   null,
   telIramFree:    null,
-  telIramUsed:    null,
   telIramUsage:   null,
   telIramBar:     null,
-  telPsramTotal:  null,
   telPsramFree:   null,
-  telPsramUsed:   null,
   telPsramUsage:  null,
   telPsramBar:    null,
   telCpuCores:    null,
   telFlashSize:   null,
   telUptime:      null,
 
-  // Sidebar / topbar status
+  // Emergency stop
+  btnEstop: null,
+
+  // Sidebar / topbar
   sidebarDot:   null,
   sidebarLabel: null,
   topbarDot:    null,
 };
 
-// ── Telemetry polling ─────────────────────────────────────────────────────────
+// ── Telemetry ──────────────────────────────────────────────────
 const TEL_POLL_MS = 1000;
 let telPollTimer  = null;
 
@@ -96,30 +74,28 @@ function setOnline(online) {
 }
 
 function applyTelemetry(d) {
-  setText(Control.telHeapTotal,   bytesToKB(d.heap_total));
   setText(Control.telHeapFree,    bytesToKB(d.heap_free));
-  setText(Control.telHeapUsed,    bytesToKB(d.heap_used));
   setText(Control.telHeapMinFree, bytesToKB(d.heap_min_free));
-  setText(Control.telHeapUsage,   d.heap_usage.toFixed(1) + ' %');
+  setText(Control.telHeapUsage,   d.heap_usage.toFixed(1) + '%');
   applyBar(Control.telHeapBar, d.heap_usage);
 
-  setText(Control.telIramTotal,  bytesToKB(d.internal_heap_total));
   setText(Control.telIramFree,   bytesToKB(d.internal_heap_free));
-  setText(Control.telIramUsed,   bytesToKB(d.internal_heap_used));
-  setText(Control.telIramUsage,  d.internal_heap_usage.toFixed(1) + ' %');
+  setText(Control.telIramUsage,  d.internal_heap_usage.toFixed(1) + '%');
   applyBar(Control.telIramBar, d.internal_heap_usage);
 
-  setText(Control.telPsramTotal,  bytesToKB(d.psram_total));
-  setText(Control.telPsramFree,   bytesToKB(d.psram_free));
-  setText(Control.telPsramUsed,   bytesToKB(d.psram_used));
-  setText(Control.telPsramUsage,  d.psram_usage.toFixed(1) + ' %');
+  setText(Control.telPsramFree,  bytesToKB(d.psram_free));
+  setText(Control.telPsramUsage, d.psram_usage.toFixed(1) + '%');
   applyBar(Control.telPsramBar, d.psram_usage);
 
   setText(Control.telCpuCores,  d.cpu_cores);
   setText(Control.telFlashSize, bytesToKB(d.flash_size));
   setText(Control.telUptime,    fmtUptime(d.uptime_seconds));
   setText(Control.telLastUpdated, new Date().toLocaleTimeString());
-if (Control.togLed) Control.togLed.checked = d.led_enabled;
+
+  // sync LED toggle in settings if available
+  const togLed = document.getElementById('tog-led');
+  if (togLed && d.led_enabled !== undefined) togLed.checked = d.led_enabled;
+
   setOnline(true);
 }
 
@@ -144,53 +120,71 @@ function stopTelemetryPolling() {
   telPollTimer = null;
 }
 
-// ── Relay ─────────────────────────────────────────────────────────────────────
-function setRelayUI(on) {
-  Control.relayBadge.textContent = on ? 'ON' : 'OFF';
-  Control.relayBadge.classList.toggle('on', on);
-  Control.relayIndicator.classList.toggle('on', on);
+// ── Relay helpers ──────────────────────────────────────────────
+function setRelayUI(n, on) {
+  const r = Control.relays[n];
+  if (!r) return;
+  r.badge.textContent = on ? 'ON' : 'OFF';
+  r.badge.classList.toggle('on', on);
+  r.indicator.classList.toggle('on', on);
 }
 
-function initRelay() {
-  Control.btnRelayOn.addEventListener('click', async () => {
+function setScheduleBadge(n, enabled) {
+  const r = Control.relays[n];
+  if (!r) return;
+  r.scheduleBadge.textContent = enabled ? 'ON' : 'OFF';
+  r.scheduleBadge.classList.toggle('on', enabled);
+}
+
+// ── Init one relay card ────────────────────────────────────────
+function initRelayCard(n) {
+  const i = n - 1; // array index
+
+  const r = {
+    badge:         document.getElementById(`relay-badge-${n}`),
+    indicator:     document.getElementById(`relay-indicator-${n}`),
+    btnOn:         document.getElementById(`btn-relay-${n}-on`),
+    btnOff:        document.getElementById(`btn-relay-${n}-off`),
+    scheduleBadge: document.getElementById(`schedule-badge-${n}`),
+    inpStart:      document.getElementById(`inp-schedule-${n}-start`),
+    inpStop:       document.getElementById(`inp-schedule-${n}-stop`),
+    togSchedule:   document.getElementById(`tog-schedule-${n}`),
+    btnApply:      document.getElementById(`btn-save-schedule-${n}`),
+  };
+
+  Control.relays[i] = r;
+
+  r.btnOn.addEventListener('click', async () => {
     try {
-      await API.setRelay(true);
-      setRelayUI(true);
-      showToast('Relay turned ON', 'success');
+      await API.setRelay(n, true);
+      setRelayUI(i, true);
+      showToast(`Relay ${n} ON`, 'success');
     } catch (err) {
-      showToast('Failed to set relay: ' + err.message, 'error');
+      showToast(`Relay ${n} failed: ` + err.message, 'error');
     }
   });
 
-  Control.btnRelayOff.addEventListener('click', async () => {
+  r.btnOff.addEventListener('click', async () => {
     try {
-      await API.setRelay(false);
-      setRelayUI(false);
-      showToast('Relay turned OFF');
+      await API.setRelay(n, false);
+      setRelayUI(i, false);
+      showToast(`Relay ${n} OFF`);
     } catch (err) {
-      showToast('Failed to set relay: ' + err.message, 'error');
+      showToast(`Relay ${n} failed: ` + err.message, 'error');
     }
   });
-}
 
-// ── Schedule ──────────────────────────────────────────────────────────────────
-function setScheduleBadge(enabled) {
-  Control.scheduleBadge.textContent = enabled ? 'ON' : 'OFF';
-  Control.scheduleBadge.classList.toggle('on', enabled);
-}
-
-function initSchedule() {
-  Control.togSchedule.addEventListener('change', () => {
-    setScheduleBadge(Control.togSchedule.checked);
+  r.togSchedule.addEventListener('change', () => {
+    setScheduleBadge(i, r.togSchedule.checked);
   });
 
-  Control.btnSaveSchedule.addEventListener('click', async () => {
-    const enabled = Control.togSchedule.checked;
-    const start   = Control.inpScheduleStart.value;
-    const stop    = Control.inpScheduleStop.value;
+  r.btnApply.addEventListener('click', async () => {
+    const enabled = r.togSchedule.checked;
+    const start   = r.inpStart.value;
+    const stop    = r.inpStop.value;
 
     if (enabled && (!start || !stop)) {
-      showToast('Set both start and stop times first', 'warn');
+      showToast('Set start and stop times first', 'warn');
       return;
     }
 
@@ -201,129 +195,64 @@ function initSchedule() {
       String(now.getSeconds()).padStart(2,'0');
 
     try {
-      Control.btnSaveSchedule.disabled = true;
-      await API.setSchedule({ enabled, start, stop, device_time });
-      setScheduleBadge(enabled);
+      r.btnApply.disabled = true;
+      await API.setSchedule({ relay: n, enabled, start, stop, device_time });
+      setScheduleBadge(i, enabled);
       showToast(
-        enabled ? `Schedule set: ${start} → ${stop}` : 'Schedule disabled',
+        enabled ? `Relay ${n} schedule: ${start} → ${stop}` : `Relay ${n} schedule off`,
         'success'
       );
     } catch (err) {
-      showToast('Schedule save failed: ' + err.message, 'error');
+      showToast('Schedule failed: ' + err.message, 'error');
     } finally {
-      Control.btnSaveSchedule.disabled = false;
+      r.btnApply.disabled = false;
     }
   });
 }
 
-// ── Peripherals ───────────────────────────────────────────────────────────────
-function initPeripherals() {
-  const peripherals = [
-    //{ el: Control.togLed,   key: 'led'   },
-    { el: Control.togFan,   key: 'fan'   },
-    { el: Control.togLight, key: 'light' },
-    { el: Control.togAuto,  key: 'auto'  },
-  ];
-
-  Control.togLed.addEventListener('change', async () => {
-      const on = Control.togLed.checked;
-      try {
-          await API.setLedEnabled(on);
-          showToast(on ? 'Status LED enabled' : 'Status LED disabled', 'success');
-      } catch (err) {
-          Control.togLed.checked = !on;
-          showToast('Failed: ' + err.message, 'error');
-      }
-  });
-
-
-  peripherals.forEach(({ el, key }) => {
-    el.addEventListener('change', async () => {
-      const on = el.checked;
-      try {
-        await API.setPeripheral(key, on);
-        showToast(
-          `${key.charAt(0).toUpperCase() + key.slice(1)} ${on ? 'enabled' : 'disabled'}`,
-          'success'
-        );
-      } catch (err) {
-        el.checked = !on;
-        showToast(`Failed to toggle ${key}: ` + err.message, 'error');
-      }
-    });
-  });
-}
-
-// ── Emergency Stop ────────────────────────────────────────────────────────────
+// ── Emergency Stop ─────────────────────────────────────────────
 function initEmergencyStop() {
   Control.btnEstop.addEventListener('click', async () => {
     try {
       await API.emergencyStop();
-      setRelayUI(false);
-      [Control.togLed, Control.togFan, Control.togLight, Control.togAuto]
-        .forEach(t => { t.checked = false; });
-      showToast('⬛ Emergency stop triggered — all outputs OFF', 'error', 5000);
+      Control.relays.forEach((_, i) => setRelayUI(i, false));
+      showToast('⬛ Emergency stop — all relays OFF', 'error', 5000);
     } catch (err) {
       showToast('E-stop failed: ' + err.message, 'error');
     }
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────
 function initControl() {
-  // Relay
-  Control.btnRelayOn     = document.getElementById('btn-relay-on');
-  Control.btnRelayOff    = document.getElementById('btn-relay-off');
-  Control.relayBadge     = document.getElementById('relay-badge');
-  Control.relayIndicator = document.getElementById('relay-indicator');
-
-  // Schedule
-  Control.scheduleBadge    = document.getElementById('schedule-badge');
-  Control.inpScheduleStart = document.getElementById('inp-schedule-start');
-  Control.inpScheduleStop  = document.getElementById('inp-schedule-stop');
-  Control.togSchedule      = document.getElementById('tog-schedule');
-  Control.btnSaveSchedule  = document.getElementById('btn-save-schedule');
-
-  // Peripherals
-  Control.togLed   = document.getElementById('tog-led');
-  Control.togFan   = document.getElementById('tog-fan');
-  Control.togLight = document.getElementById('tog-light');
-  Control.togAuto  = document.getElementById('tog-auto');
-
-  // Emergency stop
-  Control.btnEstop = document.getElementById('btn-estop');
-
   // Telemetry
   Control.telDot         = document.getElementById('telemetry-status-dot');
   Control.telLastUpdated = document.getElementById('tel-last-updated');
-  Control.telHeapTotal   = document.getElementById('tel-heap-total');
   Control.telHeapFree    = document.getElementById('tel-heap-free');
-  Control.telHeapUsed    = document.getElementById('tel-heap-used');
   Control.telHeapMinFree = document.getElementById('tel-heap-min-free');
   Control.telHeapUsage   = document.getElementById('tel-heap-usage');
   Control.telHeapBar     = document.getElementById('tel-heap-bar');
-  Control.telIramTotal   = document.getElementById('tel-iram-total');
   Control.telIramFree    = document.getElementById('tel-iram-free');
-  Control.telIramUsed    = document.getElementById('tel-iram-used');
   Control.telIramUsage   = document.getElementById('tel-iram-usage');
   Control.telIramBar     = document.getElementById('tel-iram-bar');
-  Control.telPsramTotal  = document.getElementById('tel-psram-total');
   Control.telPsramFree   = document.getElementById('tel-psram-free');
-  Control.telPsramUsed   = document.getElementById('tel-psram-used');
   Control.telPsramUsage  = document.getElementById('tel-psram-usage');
   Control.telPsramBar    = document.getElementById('tel-psram-bar');
   Control.telCpuCores    = document.getElementById('tel-cpu-cores');
   Control.telFlashSize   = document.getElementById('tel-flash-size');
   Control.telUptime      = document.getElementById('tel-uptime');
 
+  // Emergency stop
+  Control.btnEstop = document.getElementById('btn-estop');
+
   // Sidebar / topbar
   Control.sidebarDot   = document.getElementById('sidebar-status-dot');
   Control.sidebarLabel = document.getElementById('sidebar-status-label');
   Control.topbarDot    = document.getElementById('topbar-status-dot');
 
-  initRelay();
-  initSchedule();
-  initPeripherals();
+  // Init 4 relay cards
+  [1, 2, 3, 4].forEach(initRelayCard);
+
   initEmergencyStop();
   startTelemetryPolling();
 }

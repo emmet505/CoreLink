@@ -11,6 +11,8 @@ idf_component_register(
         "modules/system_monitor/system_monitor.c"
         "modules/status/led_status.c"
         "modules/http_server/led_handler.c"
+        "modules/reset_button/reset_button.c"
+        "modules/handle_time/time_handler.c"
 
     INCLUDE_DIRS
         "."
@@ -24,6 +26,8 @@ idf_component_register(
         "utils/Network"
         "utils/OTA"
         "modules/status"
+        "modules/reset_button"
+        "modules/handle_time"
     REQUIRES
         esp_wifi
         esp_netif

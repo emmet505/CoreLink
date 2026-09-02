@@ -1,6 +1,6 @@
 /* ============================================================
    pages/settings.js  —  Settings page
-   Network config · Reboot · Factory Reset
+   Network config · LED toggle · Device actions
    ============================================================ */
 
 'use strict';
@@ -19,6 +19,7 @@ const Settings = {
   inpDns:         null,
   settingsError:  null,
   btnSave:        null,
+  togLed:         null,
   btnReboot:      null,
   btnFactory:     null,
 };
@@ -61,6 +62,7 @@ function initSettings() {
   Settings.inpDns         = document.getElementById('inp-dns');
   Settings.settingsError  = document.getElementById('settings-error');
   Settings.btnSave        = document.getElementById('btn-save-settings');
+  Settings.togLed         = document.getElementById('tog-led');
   Settings.btnReboot      = document.getElementById('btn-reboot');
   Settings.btnFactory     = document.getElementById('btn-factory');
 
@@ -74,7 +76,19 @@ function initSettings() {
     }
   });
 
-  // Save
+  // LED toggle
+  Settings.togLed.addEventListener('change', async () => {
+    const on = Settings.togLed.checked;
+    try {
+      await API.setLedEnabled(on);
+      showToast(on ? 'Status LED enabled' : 'Status LED disabled', 'success');
+    } catch (err) {
+      Settings.togLed.checked = !on;
+      showToast('Failed: ' + err.message, 'error');
+    }
+  });
+
+  // Save network settings
   Settings.btnSave.addEventListener('click', async () => {
     showSettingsError('');
     [Settings.inpIp, Settings.inpMask, Settings.inpGw, Settings.inpDns,
@@ -158,7 +172,7 @@ function initSettings() {
   Settings.btnReboot.addEventListener('click', async () => {
     const ok = await confirmAction(
       'Restart Device',
-      'The device will restart and apply saved settings. Connection will be lost briefly.',
+      'The device will restart and apply saved settings.',
       'Restart'
     );
     if (!ok) return;
