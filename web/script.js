@@ -14,9 +14,10 @@ let _pages          = null;
 
 
 function syncDeviceTime() {
-  if (sessionStorage.getItem('time_synced')) return;
+  //if (sessionStorage.getItem('time_synced')) return;
 
   const now = new Date();
+  console.log(now);
   API.request('/api/time', {
     method: 'POST',
     body: JSON.stringify({
@@ -27,6 +28,7 @@ function syncDeviceTime() {
   }).then(() => {
     sessionStorage.setItem('time_synced', '1');
   }).catch(err => console.warn('[time] sync failed:', err.message));
+  console.log('[time] sync request sent');
 }
 
 

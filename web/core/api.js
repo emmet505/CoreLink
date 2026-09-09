@@ -19,8 +19,9 @@ const API = {
   },
 
   getStatus()            { return API.request('/api/status'); },
+  getRelayStates()       { return API.request('/api/relay/state'); },
   getSettings()          { return API.request('/api/settings'); },
-  setRelay(state)        { return API.request('/api/relay',          { method: 'POST', body: JSON.stringify({ state }) }); },
+  setRelay(relay, state) { return API.request('/api/relay',          { method: 'POST', body: JSON.stringify({ relay, state }) }); },
   setPeripheral(k,v)     { return API.request('/api/peripheral',     { method: 'POST', body: JSON.stringify({ [k]: v }) }); },
   emergencyStop()        { return API.request('/api/estop',          { method: 'POST' }); },
   saveSettings(data)     { return API.request('/api/settings',       { method: 'POST', body: JSON.stringify(data) }); },

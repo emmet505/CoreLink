@@ -136,6 +136,29 @@ function setScheduleBadge(n, enabled) {
   r.scheduleBadge.classList.toggle('on', enabled);
 }
 
+function applyRelayState(state) {
+  const index = state.relay - 1;
+  const r = Control.relays[index];
+  if (!r) return;
+
+  setRelayUI(index, state.is_on);
+
+  const schedule = state.schedule;
+  r.togSchedule.checked = schedule.enabled;
+  r.inpStart.value = `${String(schedule.start.hour).padStart(2, '0')}:${String(schedule.start.minute).padStart(2, '0')}`;
+  r.inpStop.value = `${String(schedule.stop.hour).padStart(2, '0')}:${String(schedule.stop.minute).padStart(2, '0')}`;
+  setScheduleBadge(index, schedule.enabled);
+}
+
+async function fetchRelayStates() {
+  try {
+    const states = await API.getRelayStates();
+    states.forEach(applyRelayState);
+  } catch (err) {
+    console.warn('[relays] state fetch failed:', err.message);
+  }
+}
+
 // ── Init one relay card ────────────────────────────────────────
 function initRelayCard(n) {
   const i = n - 1; // array index
@@ -187,16 +210,30 @@ function initRelayCard(n) {
       showToast('Set start and stop times first', 'warn');
       return;
     }
-
-    const now = new Date();
-    const device_time =
-      String(now.getHours()).padStart(2,'0') + ':' +
-      String(now.getMinutes()).padStart(2,'0') + ':' +
-      String(now.getSeconds()).padStart(2,'0');
-
+    if (!enabled) {
+      try {
+        r.btnApply.disabled = true;
+        await API.setSchedule({ relay: n, enabled: false });
+        setRelayUI(i, false);
+        setScheduleBadge(i, false);
+        showToast(`Relay ${n} schedule off`, 'success');
+      } catch (err) {
+        showToast('Schedule failed: ' + err.message, 'error');
+      } finally {
+        r.btnApply.disabled = false;
+      }
+      return;
+    }
+    const [startHour, startMinute] = start.split(':').map(Number);
+    const [stopHour,  stopMinute]  = stop.split(':').map(Number);
     try {
       r.btnApply.disabled = true;
-      await API.setSchedule({ relay: n, enabled, start, stop, device_time });
+      await API.setSchedule({
+        relay:   n,
+        enabled,
+        start:   { hour: startHour, minute: startMinute },
+        stop:    { hour: stopHour,  minute: stopMinute  },
+      });
       setScheduleBadge(i, enabled);
       showToast(
         enabled ? `Relay ${n} schedule: ${start} → ${stop}` : `Relay ${n} schedule off`,
@@ -254,5 +291,6 @@ function initControl() {
   [1, 2, 3, 4].forEach(initRelayCard);
 
   initEmergencyStop();
+  fetchRelayStates();
   startTelemetryPolling();
 }

@@ -11,12 +11,13 @@
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_netif.h"
-#include "time_handler.h"
 #include "led_handler.h"
 #include "led_status.h"
 #include "lwip/ip4_addr.h"
+#include "relay.h"
 #include "sdkconfig.h"
 #include "system_monitor.h"
+#include "time_handler.h"
 #include "utils/OTA/ota_handler.h"
 #include "wifi_config_store.h"
 
@@ -145,14 +146,6 @@ esp_err_t http_server_start(void) {
     return cp_err;
   }
 
-  httpd_uri_t static_wildcard_uri = {
-      .uri = "/*",
-      .method = HTTP_GET,
-      .handler = static_handler,
-      .user_ctx = NULL,
-  };
-  httpd_register_uri_handler(s_server, &static_wildcard_uri);
-
   httpd_uri_t led_uri = {
       .uri = "/api/led",
       .method = HTTP_POST,
@@ -168,6 +161,39 @@ esp_err_t http_server_start(void) {
       .user_ctx = NULL,
   };
   httpd_register_uri_handler(s_server, &time_uri);
+
+  httpd_uri_t relay_set_uri = {
+      .uri = "/api/relay",
+      .method = HTTP_POST,
+      .handler = relay_handler_set,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &relay_set_uri);
+
+  httpd_uri_t relay_schedule_uri = {
+      .uri = "/api/relay/schedule",
+      .method = HTTP_POST,
+      .handler = relay_handler_schedule,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &relay_schedule_uri);
+
+  httpd_uri_t get_relays_state_uri = {
+      .uri = "/api/relay/state",
+      .method = HTTP_GET,
+      .handler = relay_get_state_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &get_relays_state_uri);
+
+  httpd_uri_t static_wildcard_uri = {
+      .uri = "/*",
+      .method = HTTP_GET,
+      .handler = static_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &static_wildcard_uri);
+
   return ESP_OK;
 }
 
@@ -473,7 +499,6 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
   }
 
   cJSON_Delete(root);
-
 
   esp_err_t err = wifi_config_save(&cfg);
   if (err != ESP_OK) {

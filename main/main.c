@@ -13,10 +13,11 @@
 #include "modules/filesystem/filesystem.h"
 #include "modules/http_server/http_server.h"
 #include "modules/system_monitor/system_monitor.h"
+#include "modules/relay/relay.h"
 #include "modules/wifi/wifi.h"
 #include "nvs_flash.h"
 #include "reset_button.h"
-#include "utils/Network/dns_server.h"
+#include "modules/Network/dns_server.h"
 #include "wifi_config_store.h"
 
 static const char* TAG = "APP";
@@ -31,6 +32,8 @@ static void monitor_task(void* pvParameters) {
     int clients = wifi_get_connected_clients();
     ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients,
              xPortGetCoreID());
+    // ESP_LOGI("monitor_task", "relays status:");
+    // relay_status_getter();
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
 }
@@ -59,6 +62,8 @@ void app_main(void) {
 
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   ESP_LOGI(TAG, "Event loop ready (core %d)", xPortGetCoreID());
+
+  ESP_ERROR_CHECK(relay_init());
 
   ESP_ERROR_CHECK(led_status_init());
   ESP_LOGI(TAG, "LED status ready (core %d)", xPortGetCoreID());

@@ -3,7 +3,7 @@ idf_component_register(
         "main.c"
         "modules/wifi/wifi.c"
         "utils/captive_portal/captive_portal.c"
-        "utils/Network/dns_server.c"
+        "modules/Network/dns_server.c"
         "utils/OTA/ota_handler.c"
         "modules/wifi/wifi_config_store.c"
         "modules/http_server/http_server.c"
@@ -12,7 +12,8 @@ idf_component_register(
         "modules/status/led_status.c"
         "modules/http_server/led_handler.c"
         "modules/reset_button/reset_button.c"
-        "modules/handle_time/time_handler.c"
+        "modules/time_management/time_handler.c"
+        "modules/relay/relay.c"
 
     INCLUDE_DIRS
         "."
@@ -23,11 +24,12 @@ idf_component_register(
         "modules/filesystem"
         "modules/system_monitor"
         "utils/captive_portal"
-        "utils/Network"
+        "modules/Network"
         "utils/OTA"
         "modules/status"
         "modules/reset_button"
-        "modules/handle_time"
+        "modules/time_management"
+        "modules/relay"
     REQUIRES
         esp_wifi
         esp_netif

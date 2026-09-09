@@ -1,9 +1,10 @@
+#include "reset_button.h"
+
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs_flash.h"
-#include "reset_button.h"
 #include "wifi_config_store.h"
 
 static const char* TAG = "ResetBtn";
@@ -35,14 +36,14 @@ static void reset_button_task(void* arg) {
 }
 
 esp_err_t reset_button_init() {
-    gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << RESET_GPIO),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&io_conf);
-    xTaskCreate(reset_button_task, "reset_btn", 2048, NULL, 5, NULL);
-    return ESP_OK;
+  gpio_config_t io_conf = {
+      .pin_bit_mask = (1ULL << RESET_GPIO),
+      .mode = GPIO_MODE_INPUT,
+      .pull_up_en = GPIO_PULLUP_ENABLE,
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,
+      .intr_type = GPIO_INTR_DISABLE,
+  };
+  gpio_config(&io_conf);
+  xTaskCreate(reset_button_task, "reset_btn", 2048, NULL, 5, NULL);
+  return ESP_OK;
 }
