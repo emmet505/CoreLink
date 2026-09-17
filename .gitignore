@@ -17,7 +17,6 @@ flasher_args.json
 *.hex
 *.log
 sdkconfig.old
-sdkconfig.defaults
 sdkconfig
 
 # Python / virtualenv
