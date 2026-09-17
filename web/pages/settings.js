@@ -17,6 +17,18 @@ const Settings = {
   inpMask:        null,
   inpGw:          null,
   inpDns:         null,
+  inpStaSsid:      null,
+  inpStaPassOld:   null,
+  inpStaPassNew:   null,
+  inpStaRetry:     null,
+  staSettingsError:null,
+  btnSaveSta:      null,
+  inpTimezone:     null,
+  inpNtp1:         null,
+  inpNtp2:         null,
+  inpNtp3:         null,
+  timeSettingsError:null,
+  btnSaveTime:     null,
   settingsError:  null,
   btnSave:        null,
   togLed:         null,
@@ -43,6 +55,14 @@ async function loadSettings() {
     if (d.ip)              Settings.inpIp.value      = d.ip;
     if (d.gateway)         Settings.inpGw.value      = d.gateway;
     if (d.netmask)         Settings.inpMask.value    = d.netmask;
+    const sta = await API.getStaSettings();
+    if (sta.ssid)          Settings.inpStaSsid.value = sta.ssid;
+    if (sta.max_retry !== undefined) Settings.inpStaRetry.value = sta.max_retry;
+    const time = await API.getTimeSettings();
+    Settings.inpTimezone.value = time.timezone || '';
+    Settings.inpNtp1.value = time.server1 || '';
+    Settings.inpNtp2.value = time.server2 || '';
+    Settings.inpNtp3.value = time.server3 || '';
   } catch (err) {
     console.warn('[settings] failed to load:', err.message);
   }
@@ -60,6 +80,18 @@ function initSettings() {
   Settings.inpMask        = document.getElementById('inp-mask');
   Settings.inpGw          = document.getElementById('inp-gw');
   Settings.inpDns         = document.getElementById('inp-dns');
+  Settings.inpStaSsid     = document.getElementById('inp-sta-ssid');
+  Settings.inpStaPassOld  = document.getElementById('inp-sta-pass-old');
+  Settings.inpStaPassNew  = document.getElementById('inp-sta-pass-new');
+  Settings.inpStaRetry     = document.getElementById('inp-sta-retry');
+  Settings.staSettingsError = document.getElementById('sta-settings-error');
+  Settings.btnSaveSta      = document.getElementById('btn-save-sta-settings');
+  Settings.inpTimezone     = document.getElementById('inp-timezone');
+  Settings.inpNtp1         = document.getElementById('inp-ntp-1');
+  Settings.inpNtp2         = document.getElementById('inp-ntp-2');
+  Settings.inpNtp3         = document.getElementById('inp-ntp-3');
+  Settings.timeSettingsError = document.getElementById('time-settings-error');
+  Settings.btnSaveTime     = document.getElementById('btn-save-time-settings');
   Settings.settingsError  = document.getElementById('settings-error');
   Settings.btnSave        = document.getElementById('btn-save-settings');
   Settings.togLed         = document.getElementById('tog-led');
@@ -165,6 +197,63 @@ function initSettings() {
       showToast('Save failed: ' + err.message, 'error');
     } finally {
       Settings.btnSave.disabled = false;
+    }
+  });
+
+  Settings.btnSaveSta.addEventListener('click', async () => {
+    Settings.staSettingsError.textContent = '';
+    const ssid = Settings.inpStaSsid.value.trim();
+    const maxRetry = parseInt(Settings.inpStaRetry.value, 10);
+    if (!ssid || ssid.length > 32) {
+      Settings.staSettingsError.textContent = 'SSID must be between 1 and 32 characters.';
+      return;
+    }
+    if (isNaN(maxRetry) || maxRetry < 0 || maxRetry > 255) {
+      Settings.staSettingsError.textContent = 'Retry count must be between 0 and 255.';
+      return;
+    }
+    const payload = { ssid, max_retry: maxRetry };
+    if (Settings.inpStaPassNew.value) {
+      payload.password = Settings.inpStaPassNew.value;
+      payload.old_password = Settings.inpStaPassOld.value;
+    }
+    try {
+      Settings.btnSaveSta.disabled = true;
+      const result = await API.saveStaSettings(payload);
+      if (result.reboot) {
+        stopTelemetryPolling();
+        setOnline(false);
+        await showInfoModal('Device Rebooting', 'Station settings saved. The device is restarting.', 'OK');
+      } else {
+        showToast('Station settings saved', 'success');
+      }
+    } catch (err) {
+      showToast('Save failed: ' + err.message, 'error');
+    } finally {
+      Settings.btnSaveSta.disabled = false;
+    }
+  });
+
+  Settings.btnSaveTime.addEventListener('click', async () => {
+    Settings.timeSettingsError.textContent = '';
+    const payload = {
+      timezone: Settings.inpTimezone.value.trim(),
+      server1: Settings.inpNtp1.value.trim(),
+      server2: Settings.inpNtp2.value.trim(),
+      server3: Settings.inpNtp3.value.trim(),
+    };
+    if (Object.values(payload).some(value => !value || value.length >= 64)) {
+      Settings.timeSettingsError.textContent = 'Timezone and NTP servers are required and must be shorter than 64 characters.';
+      return;
+    }
+    try {
+      Settings.btnSaveTime.disabled = true;
+      await API.saveTimeSettings(payload);
+      showToast('Time settings saved', 'success');
+    } catch (err) {
+      showToast('Save failed: ' + err.message, 'error');
+    } finally {
+      Settings.btnSaveTime.disabled = false;
     }
   });
 

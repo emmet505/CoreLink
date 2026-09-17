@@ -14,11 +14,14 @@
 #include "led_handler.h"
 #include "led_status.h"
 #include "lwip/ip4_addr.h"
+#include "nvs_flash.h"
+#include "pow_man.h"
 #include "relay.h"
 #include "sdkconfig.h"
 #include "system_monitor.h"
 #include "time_handler.h"
 #include "utils/OTA/ota_handler.h"
+#include "wifi.h"
 #include "wifi_config_store.h"
 
 #define FILE_PATH_MAX 512
@@ -29,6 +32,11 @@ static const char* TAG = "http_server";
 static esp_err_t status_api_handler(httpd_req_t* req);
 static esp_err_t settings_get_handler(httpd_req_t* req);
 static esp_err_t settings_post_handler(httpd_req_t* req);
+static esp_err_t sta_settings_get_handler(httpd_req_t* req);
+static esp_err_t sta_settings_post_handler(httpd_req_t* req);
+static esp_err_t factory_reset_handler(httpd_req_t* req);
+static esp_err_t reboot_handler(httpd_req_t* req);
+static esp_err_t estop_handler(httpd_req_t* req);
 
 static esp_err_t serve_file(httpd_req_t* req, const char* path) {
   FILE* file = fopen(path, "r");
@@ -59,6 +67,129 @@ static esp_err_t serve_file(httpd_req_t* req, const char* path) {
 
   fclose(file);
   httpd_resp_send_chunk(req, NULL, 0);
+  return ESP_OK;
+}
+
+static esp_err_t sta_settings_get_handler(httpd_req_t* req) {
+  wifi_config_store_t cfg;
+  if (wifi_config_load(&cfg) != ESP_OK) {
+    httpd_resp_send_500(req);
+    return ESP_FAIL;
+  }
+
+  cJSON* root = cJSON_CreateObject();
+  if (root == NULL) {
+    httpd_resp_send_500(req);
+    return ESP_FAIL;
+  }
+
+  cJSON_AddStringToObject(root, "ssid", cfg.sta_ssid);
+  cJSON_AddNumberToObject(root, "max_retry", cfg.sta_max_retry);
+
+  char* json = cJSON_PrintUnformatted(root);
+  cJSON_Delete(root);
+  if (json == NULL) {
+    httpd_resp_send_500(req);
+    return ESP_FAIL;
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
+  free(json);
+  return ESP_OK;
+}
+
+static esp_err_t sta_settings_post_handler(httpd_req_t* req) {
+  if (req->content_len > SETTINGS_BODY_MAX) {
+    httpd_resp_set_status(req, "400 Bad Request");
+    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Body too large\"}");
+    return ESP_OK;
+  }
+
+  char body[SETTINGS_BODY_MAX + 1];
+  int received = httpd_req_recv(req, body, SETTINGS_BODY_MAX);
+  if (received <= 0) {
+    httpd_resp_set_status(req, "400 Bad Request");
+    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Empty body\"}");
+    return ESP_OK;
+  }
+  body[received] = '\0';
+
+  cJSON* root = cJSON_Parse(body);
+  if (root == NULL) {
+    httpd_resp_set_status(req, "400 Bad Request");
+    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Invalid JSON\"}");
+    return ESP_OK;
+  }
+
+  cJSON* j_ssid = cJSON_GetObjectItem(root, "ssid");
+  cJSON* j_password = cJSON_GetObjectItem(root, "password");
+  cJSON* j_old_password = cJSON_GetObjectItem(root, "old_password");
+  cJSON* j_max_retry = cJSON_GetObjectItem(root, "max_retry");
+  const char* ssid =
+      cJSON_IsString(j_ssid) ? cJSON_GetStringValue(j_ssid) : NULL;
+  const char* password =
+      cJSON_IsString(j_password) ? cJSON_GetStringValue(j_password) : NULL;
+  const char* old_password = cJSON_IsString(j_old_password)
+                                 ? cJSON_GetStringValue(j_old_password)
+                                 : NULL;
+
+  const char* field_error = NULL;
+  int max_retry =
+      cJSON_IsNumber(j_max_retry) ? (int)cJSON_GetNumberValue(j_max_retry) : -1;
+  if (ssid == NULL || strlen(ssid) == 0 || strlen(ssid) > 32) {
+    field_error = "ssid must be 1-32 characters";
+  } else if (password != NULL && strlen(password) > 0 && strlen(password) < 8) {
+    field_error = "password must be at least 8 characters";
+  } else if (max_retry < 0 || max_retry > 255) {
+    field_error = "max_retry must be 0-255";
+  }
+
+  wifi_config_store_t cfg;
+  if (field_error == NULL && wifi_config_load(&cfg) != ESP_OK) {
+    field_error = "Failed to load current config";
+  }
+
+  if (field_error == NULL && password != NULL && strlen(password) > 0 &&
+      (old_password == NULL || strcmp(old_password, cfg.sta_password) != 0)) {
+    field_error = "Incorrect old password";
+  }
+
+  if (field_error != NULL) {
+    cJSON_Delete(root);
+    httpd_resp_set_status(req, "400 Bad Request");
+    char error_body[160];
+    snprintf(error_body, sizeof(error_body),
+             "{\"success\":false,\"error\":\"%s\"}", field_error);
+    httpd_resp_sendstr(req, error_body);
+    return ESP_OK;
+  }
+
+  bool changed = strcmp(cfg.sta_ssid, ssid) != 0 ||
+                 cfg.sta_max_retry != (uint8_t)max_retry;
+  strlcpy(cfg.sta_ssid, ssid, sizeof(cfg.sta_ssid));
+  if (password != NULL && strlen(password) > 0) {
+    changed = changed || strcmp(cfg.sta_password, password) != 0;
+    strlcpy(cfg.sta_password, password, sizeof(cfg.sta_password));
+  }
+  cfg.sta_max_retry = (uint8_t)max_retry;
+  cJSON_Delete(root);
+
+  if (wifi_config_save(&cfg) != ESP_OK) {
+    httpd_resp_set_status(req, "500 Internal Server Error");
+    httpd_resp_sendstr(
+        req,
+        "{\"success\":false,\"error\":\"Failed to save station settings\"}");
+    return ESP_OK;
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_sendstr(req, changed ? "{\"success\":true,\"reboot\":true}"
+                                  : "{\"success\":true,\"reboot\":false}");
+  if (changed) {
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    esp_restart();
+  }
   return ESP_OK;
 }
 
@@ -124,6 +255,18 @@ esp_err_t http_server_start(void) {
                                    .user_ctx = NULL};
   httpd_register_uri_handler(s_server, &settings_post_uri);
 
+  httpd_uri_t sta_settings_get_uri = {.uri = "/api/sta-settings",
+                                      .method = HTTP_GET,
+                                      .handler = sta_settings_get_handler,
+                                      .user_ctx = NULL};
+  httpd_register_uri_handler(s_server, &sta_settings_get_uri);
+
+  httpd_uri_t sta_settings_post_uri = {.uri = "/api/sta-settings",
+                                       .method = HTTP_POST,
+                                       .handler = sta_settings_post_handler,
+                                       .user_ctx = NULL};
+  httpd_register_uri_handler(s_server, &sta_settings_post_uri);
+
   httpd_uri_t ota_firmware_uri = {
       .uri = "/api/ota/firmware",
       .method = HTTP_POST,
@@ -162,6 +305,22 @@ esp_err_t http_server_start(void) {
   };
   httpd_register_uri_handler(s_server, &time_uri);
 
+  httpd_uri_t time_settings_get_uri = {
+      .uri = "/api/time-settings",
+      .method = HTTP_GET,
+      .handler = time_settings_get_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &time_settings_get_uri);
+
+  httpd_uri_t time_settings_post_uri = {
+      .uri = "/api/time-settings",
+      .method = HTTP_POST,
+      .handler = time_settings_post_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &time_settings_post_uri);
+
   httpd_uri_t relay_set_uri = {
       .uri = "/api/relay",
       .method = HTTP_POST,
@@ -194,10 +353,34 @@ esp_err_t http_server_start(void) {
   };
   httpd_register_uri_handler(s_server, &static_wildcard_uri);
 
+  httpd_uri_t factory_uri = {
+      .uri = "/api/factory",
+      .method = HTTP_POST,
+      .handler = factory_reset_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &factory_uri);
+
+  httpd_uri_t reboot_uri = {
+      .uri = "/api/reboot",
+      .method = HTTP_POST,
+      .handler = reboot_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &reboot_uri);
+
+  httpd_uri_t estop_uri = {
+      .uri = "/api/estop",
+      .method = HTTP_POST,
+      .handler = estop_handler,
+      .user_ctx = NULL,
+  };
+  httpd_register_uri_handler(s_server, &estop_uri);
+
   return ESP_OK;
 }
 
-httpd_handle_t http_server_get_handle(void) { return s_server; }
+// httpd_handle_t http_server_get_handle(void) { return s_server; }
 
 static esp_err_t status_api_handler(httpd_req_t* req) {
   system_status_t status;
@@ -236,6 +419,7 @@ static esp_err_t status_api_handler(httpd_req_t* req) {
   cJSON_AddNumberToObject(root, "cpu_usage_core0", status.cpu_usage_core0);
   cJSON_AddNumberToObject(root, "cpu_usage_core1", status.cpu_usage_core1);
   cJSON_AddBoolToObject(root, "led_enabled", led_status_is_enabled());
+  cJSON_AddBoolToObject(root, "sta_connected", wifi_is_sta_connected());
   char* json = cJSON_PrintUnformatted(root);
   cJSON_Delete(root);
 
@@ -536,5 +720,28 @@ static esp_err_t settings_post_handler(httpd_req_t* req) {
     esp_restart();
   }
 
+  return ESP_OK;
+}
+
+static esp_err_t factory_reset_handler(httpd_req_t* req) {
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_sendstr(req, "{\"success\":true}");
+  vTaskDelay(pdMS_TO_TICKS(500));
+  pow_man_factory_reset();
+  return ESP_OK;
+}
+
+static esp_err_t reboot_handler(httpd_req_t* req) {
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_sendstr(req, "{\"success\":true}");
+  vTaskDelay(pdMS_TO_TICKS(500));
+  pow_man_reboot();
+  return ESP_OK;
+}
+
+static esp_err_t estop_handler(httpd_req_t* req) {
+  power_manager_emergency_stop();
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_sendstr(req, "{\"success\":true}");
   return ESP_OK;
 }

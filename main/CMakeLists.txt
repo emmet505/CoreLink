@@ -11,7 +11,7 @@ idf_component_register(
         "modules/system_monitor/system_monitor.c"
         "modules/status/led_status.c"
         "modules/http_server/led_handler.c"
-        "modules/reset_button/reset_button.c"
+        "modules/power_manager/pow_man.c"
         "modules/time_management/time_handler.c"
         "modules/relay/relay.c"
 
@@ -27,7 +27,7 @@ idf_component_register(
         "modules/Network"
         "utils/OTA"
         "modules/status"
-        "modules/reset_button"
+        "modules/power_manager"
         "modules/time_management"
         "modules/relay"
     REQUIRES

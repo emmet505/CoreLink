@@ -12,6 +12,7 @@ typedef enum {
     LED_ERR_FILESYSTEM = (1 << 1),
     LED_ERR_HEAP       = (1 << 2),
     LED_ERR_HTTP       = (1 << 3),
+    LED_ERR_ESTOP      = (1 << 4),
 } led_error_t;
 
 typedef enum {

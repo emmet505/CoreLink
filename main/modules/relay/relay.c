@@ -15,8 +15,8 @@ static const char* NVS_NAMESPACE = "relay_cfg";
 
 #define RELAY_COUNT 4
 
-static const gpio_num_t RELAY_GPIOS[RELAY_COUNT] = {GPIO_NUM_14, GPIO_NUM_2,
-                                                    GPIO_NUM_3, GPIO_NUM_4};
+static const gpio_num_t RELAY_GPIOS[RELAY_COUNT] = {GPIO_NUM_15, GPIO_NUM_16,
+                                                    GPIO_NUM_17, GPIO_NUM_18};
 
 static relay_state_t s_relays[RELAY_COUNT];
 static SemaphoreHandle_t s_mutex = NULL;
@@ -53,7 +53,7 @@ esp_err_t relay_init() {
         .intr_type = GPIO_INTR_DISABLE,
     };
     gpio_config(&io_conf);
-    gpio_set_level(RELAY_GPIOS[i], 0);
+    gpio_set_level(RELAY_GPIOS[i], 1);
   }
   relay_nvs_load();
   xTaskCreate(relay_schedule_task, "relay_sched", 2048, NULL, 5, NULL);
@@ -69,7 +69,7 @@ esp_err_t relay_set_state(uint8_t relay_num, bool on) {
   int i = relay_num - 1;
   xSemaphoreTake(s_mutex, portMAX_DELAY);
   s_relays[i].is_on = on;
-  gpio_set_level(s_relays[i].gpio, on ? 1 : 0);
+  gpio_set_level(s_relays[i].gpio, on ? 0 : 1);
   xSemaphoreGive(s_mutex);
 
   ESP_LOGI(TAG, "Relay %d -> %s", relay_num, on ? "ON" : "OFF");
@@ -80,7 +80,9 @@ static void relay_schedule_task(void* arg) {
   while (1) {
     if (time_is_synced()) {
       time_t now = time(NULL);
-      struct tm* t = gmtime(&now);
+      struct tm local_time;
+      localtime_r(&now, &local_time);
+      struct tm* t = &local_time;
       uint16_t current_minute = (uint16_t)(t->tm_hour * 60 + t->tm_min);
 
       ESP_LOGI(TAG, "Parsed time: %02d:%02d", t->tm_hour, t->tm_min);
@@ -90,7 +92,7 @@ static void relay_schedule_task(void* arg) {
         if (!sch->enabled) continue;
         bool should_be_on = relay_schedule_is_active(sch, current_minute);
         if (s_relays[i].is_on != should_be_on) {
-          gpio_set_level(s_relays[i].gpio, should_be_on ? 1 : 0);
+          gpio_set_level(s_relays[i].gpio, should_be_on ? 0 : 1);
           s_relays[i].is_on = should_be_on;
           ESP_LOGI(TAG, "Relay %d -> %s (schedule)", i + 1,
                    should_be_on ? "ON" : "OFF");
@@ -254,7 +256,7 @@ esp_err_t relay_handler_schedule(httpd_req_t* req) {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     s_relays[i].schedule.enabled = false;
     s_relays[i].is_on = false;
-    gpio_set_level(s_relays[i].gpio, 0);
+    gpio_set_level(s_relays[i].gpio, 1);
     xSemaphoreGive(s_mutex);
     ESP_LOGI(TAG, "Relay %d schedule disabled", relay_num);
     relay_nvs_save(relay_num);
@@ -310,6 +312,21 @@ esp_err_t relay_handler_schedule(httpd_req_t* req) {
   return ESP_OK;
 }
 
+void relay_emergency_stop(uint8_t relay_num) {
+  if (relay_num < 1 || relay_num > RELAY_COUNT) return;
+
+  int i = relay_num - 1;
+
+  xSemaphoreTake(s_mutex, portMAX_DELAY);
+  s_relays[i].is_on = false;
+  s_relays[i].schedule.enabled = false;
+  gpio_set_level(s_relays[i].gpio, 1);
+  xSemaphoreGive(s_mutex);
+
+  // comment this to avoid saving the state during emergency stop
+  // relay_nvs_save(relay_num);
+}
+
 static void relay_nvs_save(uint8_t relay_num) {
   char key[16];
   nvs_handle_t handle;
@@ -363,7 +380,7 @@ static void relay_nvs_load(void) {
     snprintf(key, sizeof(key), "r%d_state", relay_num);
     if (nvs_get_u8(handle, key, &val) == ESP_OK) {
       s_relays[i].is_on = val != 0;
-      gpio_set_level(s_relays[i].gpio, s_relays[i].is_on ? 1 : 0);
+      gpio_set_level(s_relays[i].gpio, s_relays[i].is_on ? 0 : 1);
     } else {
       s_relays[i].is_on = false;
     }

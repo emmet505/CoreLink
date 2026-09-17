@@ -31,6 +31,7 @@ relay_state_t* relay_get_state(uint8_t relay_num);
 esp_err_t relay_handler_set(httpd_req_t* req);  // just turing on/off the relay
 esp_err_t relay_handler_schedule(httpd_req_t* req);
 esp_err_t relay_get_state_handler(httpd_req_t* req);
+void relay_emergency_stop(uint8_t relay_num);
 
 
 static void relay_schedule_task(void* arg);

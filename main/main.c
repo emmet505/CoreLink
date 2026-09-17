@@ -16,7 +16,7 @@
 #include "modules/relay/relay.h"
 #include "modules/wifi/wifi.h"
 #include "nvs_flash.h"
-#include "reset_button.h"
+#include "pow_man.h"
 #include "modules/Network/dns_server.h"
 #include "wifi_config_store.h"
 

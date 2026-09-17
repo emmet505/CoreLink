@@ -369,6 +369,60 @@
           </div>
         </div>
 
+        <div class="card card--wide">
+          <div class="card-header">
+            <span class="card-title">Station Configuration</span>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inp-sta-ssid">Remote Wi-Fi SSID</label>
+            <input class="field-input" type="text" id="inp-sta-ssid" placeholder="Network name" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inp-sta-pass-old">Current Station Password</label>
+            <input class="field-input" type="password" id="inp-sta-pass-old" placeholder="••••••••" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inp-sta-pass-new">New Station Password</label>
+            <input class="field-input" type="password" id="inp-sta-pass-new" placeholder="Leave blank to keep current" />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inp-sta-retry">Maximum Retry Count</label>
+            <input class="field-input mono" type="number" id="inp-sta-retry" min="0" max="255" placeholder="5" />
+          </div>
+          <div class="field-error" id="sta-settings-error"></div>
+          <div class="card-actions">
+            <button class="btn btn--primary" id="btn-save-sta-settings">Save Station Settings</button>
+          </div>
+        </div>
+
+        <div class="card card--wide">
+          <div class="card-header">
+            <span class="card-title">Time Configuration</span>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inp-timezone">Timezone</label>
+            <input class="field-input mono" type="text" id="inp-timezone" placeholder="IRST-3:30" />
+          </div>
+          <div class="settings-row">
+            <div class="field-group">
+              <label class="field-label" for="inp-ntp-1">NTP Server 1</label>
+              <input class="field-input mono" type="text" id="inp-ntp-1" placeholder="pool.ntp.org" />
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="inp-ntp-2">NTP Server 2</label>
+              <input class="field-input mono" type="text" id="inp-ntp-2" placeholder="time.google.com" />
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inp-ntp-3">NTP Server 3</label>
+            <input class="field-input mono" type="text" id="inp-ntp-3" placeholder="time.cloudflare.com" />
+          </div>
+          <div class="field-error" id="time-settings-error"></div>
+          <div class="card-actions">
+            <button class="btn btn--primary" id="btn-save-time-settings">Save Time Settings</button>
+          </div>
+        </div>
+
         <!-- Device Actions + LED -->
         <div class="card">
           <div class="card-header">

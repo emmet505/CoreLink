@@ -1,5 +1,11 @@
 menu "Device Configuration"
 
+    config TIMEZONE
+        string "Device timezone"
+        default "IRST-3:30"
+        help
+            POSIX timezone used when displaying synchronized time.
+
     config WIFI_DEFAULT_SSID
         string "Default AP SSID"
         default "ESP32-S3-AP"
@@ -34,5 +40,38 @@ menu "Device Configuration"
         int "Default HTTP server port"
         range 1 65535
         default 80
+
+endmenu
+
+menu "Wi-Fi Station Configuration"
+
+    config WIFI_REMOTE_SSID
+        string "Remote AP SSID"
+        default "my-router"
+        help
+            SSID of the Wi-Fi network the device should join as a station.
+
+    config WIFI_REMOTE_PASSWORD
+        string "Remote AP password"
+        default "password"
+        help
+            Password of the Wi-Fi network the device should join as a station.
+
+    config WIFI_STA_MAX_RETRY
+        int "Maximum station retry count"
+        range 0 255
+        default 5
+
+    config WIFI_NTP_SERVER_1
+        string "NTP server 1"
+        default "ir.pool.ntp.org"
+
+    config WIFI_NTP_SERVER_2
+        string "NTP server 2"
+        default "time.google.com"
+
+    config WIFI_NTP_SERVER_3
+        string "NTP server 3"
+        default "time.cloudflare.com"
 
 endmenu

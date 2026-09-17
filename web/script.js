@@ -13,22 +13,30 @@ let _navItems       = null;
 let _pages          = null;
 
 
-function syncDeviceTime() {
+async function syncDeviceTime() {
   //if (sessionStorage.getItem('time_synced')) return;
 
-  const now = new Date();
-  console.log(now);
-  API.request('/api/time', {
-    method: 'POST',
-    body: JSON.stringify({
-      hour:   now.getHours(),
-      minute: now.getMinutes(),
-      second: now.getSeconds(),
-    }),
-  }).then(() => {
+  try {
+    const status = await API.getStatus();
+    if (status.sta_connected) {
+      console.log('[time] STA connected; using NTP time');
+      return;
+    }
+
+    const now = new Date();
+    await API.request('/api/time', {
+      method: 'POST',
+      body: JSON.stringify({
+        hour:   now.getHours(),
+        minute: now.getMinutes(),
+        second: now.getSeconds(),
+      }),
+    });
     sessionStorage.setItem('time_synced', '1');
-  }).catch(err => console.warn('[time] sync failed:', err.message));
-  console.log('[time] sync request sent');
+    console.log('[time] fallback sync sent; STA is unavailable');
+  } catch (err) {
+    console.warn('[time] sync failed:', err.message);
+  }
 }
 
 
