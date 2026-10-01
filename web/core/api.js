@@ -14,7 +14,15 @@ const API = {
       headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
     };
     const res = await fetch(API.BASE + path, { ...defaults, ...opts });
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      // The device answers errors as {"success":false,"error":"..."}; show that text when present.
+      let msg = `HTTP ${res.status} ${res.statusText}`;
+      try {
+        const body = await res.json();
+        if (body && body.error) msg = body.error;
+      } catch { /* body was not JSON */ }
+      throw new Error(msg);
+    }
     return res.json();
   },
 
@@ -23,7 +31,8 @@ const API = {
   getSettings()          { return API.request('/api/settings'); },
   getTimeSettings()      { return API.request('/api/time-settings'); },
     getStaSettings()       { return API.request('/api/sta-settings'); },
-  setRelay(relay, state) { return API.request('/api/relay',          { method: 'POST', body: JSON.stringify({ relay, state }) }); },
+  // group: 1 = Load A (relays 1+2), 2 = Load B (relays 3+4)
+  setRelay(group, state) { return API.request('/api/relay',          { method: 'POST', body: JSON.stringify({ group, state }) }); },
   setPeripheral(k,v)     { return API.request('/api/peripheral',     { method: 'POST', body: JSON.stringify({ [k]: v }) }); },
   emergencyStop()        { return API.request('/api/estop',          { method: 'POST' }); },
   saveSettings(data)     { return API.request('/api/settings',       { method: 'POST', body: JSON.stringify(data) }); },

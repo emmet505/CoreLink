@@ -1,13 +1,14 @@
 /* ============================================================
    pages/control.js  —  Device Control page
-   4 Relay cards · Telemetry · Emergency Stop
+   2 interlocked load cards (A = relays 1+2, B = relays 3+4)
+   Telemetry · Emergency Stop
    ============================================================ */
 
 'use strict';
 
 // ── DOM refs ──────────────────────────────────────────────────
 const Control = {
-  // Relays (arrays indexed 0–3, mapped to relay 1–4)
+  // Load cards (arrays indexed 0–1: 0 = Load A, 1 = Load B)
   relays: [],
 
   // Telemetry
@@ -36,9 +37,15 @@ const Control = {
   topbarDot:    null,
 };
 
+const GROUP_NAME = ['A', 'B'];
+
 // ── Telemetry ──────────────────────────────────────────────────
-const TEL_POLL_MS = 1000;
-let telPollTimer  = null;
+const TEL_POLL_MS   = 1000;
+const RELAY_POLL_MS = 5000;   // the scheduler can switch loads on its own
+let telPollTimer   = null;
+let relayPollTimer = null;
+let _relayBusy     = false;   // a switch request is in flight
+let _conflictShown = false;
 
 function bytesToKB(b) { return (b / 1024).toFixed(0) + ' KB'; }
 
@@ -113,18 +120,24 @@ async function fetchStatus() {
 function startTelemetryPolling() {
   fetchStatus();
   telPollTimer = setInterval(fetchStatus, TEL_POLL_MS);
+  relayPollTimer = setInterval(() => {
+    if (!_relayBusy) fetchRelayStates(false);
+  }, RELAY_POLL_MS);
 }
 
 function stopTelemetryPolling() {
   clearInterval(telPollTimer);
-  telPollTimer = null;
+  clearInterval(relayPollTimer);
+  telPollTimer   = null;
+  relayPollTimer = null;
 }
 
 // ── Relay helpers ──────────────────────────────────────────────
-function setRelayUI(n, on) {
+function setRelayUI(n, on, partial = false) {
   const r = Control.relays[n];
   if (!r) return;
-  r.badge.textContent = on ? 'ON' : 'OFF';
+  // PARTIAL = only one of the two relays of the load is ON (should never persist)
+  r.badge.textContent = partial ? 'PARTIAL' : (on ? 'ON' : 'OFF');
   r.badge.classList.toggle('on', on);
   r.indicator.classList.toggle('on', on);
 }
@@ -136,12 +149,25 @@ function setScheduleBadge(n, enabled) {
   r.scheduleBadge.classList.toggle('on', enabled);
 }
 
-function applyRelayState(state) {
-  const index = state.relay - 1;
+// While a switch is running (up to ~1 s with the dead time) lock both loads' buttons.
+function setRelayBusy(busy) {
+  _relayBusy = busy;
+  Control.relays.forEach((r) => {
+    r.btnOn.disabled  = busy;
+    r.btnOff.disabled = busy;
+  });
+}
+
+// withSchedule=false only refreshes ON/OFF, so schedule inputs the user is typing stay untouched.
+function applyRelayState(state, withSchedule = true) {
+  const index = state.group - 1;
   const r = Control.relays[index];
   if (!r) return;
 
-  setRelayUI(index, state.is_on);
+  const partial = !state.is_on && (state.phase_on || state.neutral_on);
+  setRelayUI(index, state.is_on, partial);
+
+  if (!withSchedule) return;
 
   const schedule = state.schedule;
   r.togSchedule.checked = schedule.enabled;
@@ -150,18 +176,25 @@ function applyRelayState(state) {
   setScheduleBadge(index, schedule.enabled);
 }
 
-async function fetchRelayStates() {
+async function fetchRelayStates(withSchedule = true) {
   try {
     const states = await API.getRelayStates();
-    states.forEach(applyRelayState);
+    states.forEach((s) => applyRelayState(s, withSchedule));
+
+    const conflict = states.some((s) => s.conflict);
+    if (conflict && !_conflictShown) {
+      showToast('Schedules of Load A and B overlap — nothing is switched on during the overlap', 'warn', 6000);
+    }
+    _conflictShown = conflict;
   } catch (err) {
     console.warn('[relays] state fetch failed:', err.message);
   }
 }
 
-// ── Init one relay card ────────────────────────────────────────
+// ── Init one load card (n = 1 → Load A, n = 2 → Load B) ─────────
 function initRelayCard(n) {
   const i = n - 1; // array index
+  const name = `Load ${GROUP_NAME[i]}`;
 
   const r = {
     badge:         document.getElementById(`relay-badge-${n}`),
@@ -178,22 +211,28 @@ function initRelayCard(n) {
   Control.relays[i] = r;
 
   r.btnOn.addEventListener('click', async () => {
+    setRelayBusy(true);
     try {
       await API.setRelay(n, true);
-      setRelayUI(i, true);
-      showToast(`Relay ${n} ON`, 'success');
+      await fetchRelayStates(false);   // the other load may have been switched OFF
+      showToast(`${name} ON`, 'success');
     } catch (err) {
-      showToast(`Relay ${n} failed: ` + err.message, 'error');
+      showToast(`${name} failed: ` + err.message, 'error');
+    } finally {
+      setRelayBusy(false);
     }
   });
 
   r.btnOff.addEventListener('click', async () => {
+    setRelayBusy(true);
     try {
       await API.setRelay(n, false);
       setRelayUI(i, false);
-      showToast(`Relay ${n} OFF`);
+      showToast(`${name} OFF`);
     } catch (err) {
-      showToast(`Relay ${n} failed: ` + err.message, 'error');
+      showToast(`${name} failed: ` + err.message, 'error');
+    } finally {
+      setRelayBusy(false);
     }
   });
 
@@ -213,10 +252,10 @@ function initRelayCard(n) {
     if (!enabled) {
       try {
         r.btnApply.disabled = true;
-        await API.setSchedule({ relay: n, enabled: false });
+        await API.setSchedule({ group: n, enabled: false });
         setRelayUI(i, false);
         setScheduleBadge(i, false);
-        showToast(`Relay ${n} schedule off`, 'success');
+        showToast(`${name} schedule off`, 'success');
       } catch (err) {
         showToast('Schedule failed: ' + err.message, 'error');
       } finally {
@@ -229,18 +268,21 @@ function initRelayCard(n) {
     try {
       r.btnApply.disabled = true;
       await API.setSchedule({
-        relay:   n,
+        group:   n,
         enabled,
         start:   { hour: startHour, minute: startMinute },
         stop:    { hour: stopHour,  minute: stopMinute  },
       });
       setScheduleBadge(i, enabled);
       showToast(
-        enabled ? `Relay ${n} schedule: ${start} → ${stop}` : `Relay ${n} schedule off`,
+        enabled ? `${name} schedule: ${start} → ${stop}` : `${name} schedule off`,
         'success'
       );
     } catch (err) {
-      showToast('Schedule failed: ' + err.message, 'error');
+      // e.g. "Schedule overlaps with the other group" (device answers 409)
+      showToast('Schedule failed: ' + err.message, 'error', 5000);
+      setScheduleBadge(i, false);
+      r.togSchedule.checked = false;
     } finally {
       r.btnApply.disabled = false;
     }
@@ -254,6 +296,7 @@ function initEmergencyStop() {
       await API.emergencyStop();
       Control.relays.forEach((_, i) => setRelayUI(i, false));
       showToast('⬛ Emergency stop — all relays OFF', 'error', 5000);
+      fetchRelayStates(true);   // schedules are disabled by the stop; reflect that
     } catch (err) {
       showToast('E-stop failed: ' + err.message, 'error');
     }
@@ -287,8 +330,8 @@ function initControl() {
   Control.sidebarLabel = document.getElementById('sidebar-status-label');
   Control.topbarDot    = document.getElementById('topbar-status-dot');
 
-  // Init 4 relay cards
-  [1, 2, 3, 4].forEach(initRelayCard);
+  // Init the 2 load cards
+  [1, 2].forEach(initRelayCard);
 
   initEmergencyStop();
   fetchRelayStates();

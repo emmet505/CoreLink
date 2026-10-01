@@ -1,9 +1,7 @@
-#include <stdlib.h>
-#include <string.h>
-
 #include "system_monitor.h"
 
-#include "led_status.h"
+#include <stdlib.h>
+#include <string.h>
 
 #include "esp_chip_info.h"
 #include "esp_flash.h"
@@ -11,7 +9,7 @@
 #include "esp_log.h"
 #include "esp_psram.h"
 #include "esp_system.h"
-
+#include "led_status.h"
 
 // void system_monitor_print() {
 //   size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
@@ -86,19 +84,18 @@ void system_monitor_get_status(system_status_t* status) {
   status->uptime_seconds = (uint64_t)(esp_timer_get_time() / 1000000ULL);
 }
 
-
 void system_monitor_check_health(void) {
-    system_status_t status;
-    system_monitor_get_status(&status);
+  system_status_t status;
+  system_monitor_get_status(&status);
 
-    if (status.internal_heap_usage >= 85.0f) {
-        led_status_clear_warn(LED_WARN_HEAP);
-        led_status_raise(LED_ERR_HEAP);
-    } else if (status.internal_heap_usage >= 70.0f) {
-        led_status_clear(LED_ERR_HEAP);
-        led_status_warn(LED_WARN_HEAP);
-    } else {
-        led_status_clear(LED_ERR_HEAP);
-        led_status_clear_warn(LED_WARN_HEAP);
-    }
+  if (status.internal_heap_usage >= 85.0f) {
+    led_status_clear_warn(LED_WARN_HEAP);
+    led_status_raise(LED_ERR_HEAP);
+  } else if (status.internal_heap_usage >= 70.0f) {
+    led_status_clear(LED_ERR_HEAP);
+    led_status_warn(LED_WARN_HEAP);
+  } else {
+    led_status_clear(LED_ERR_HEAP);
+    led_status_clear_warn(LED_WARN_HEAP);
+  }
 }

@@ -61,17 +61,18 @@
     <section class="page active" id="page-control">
       <header class="page-header">
         <h1 class="page-title">Device Control</h1>
-        <p class="page-subtitle">Relay outputs and live system status</p>
+        <p class="page-subtitle">Load A and Load B are interlocked (never ON together) · live system status</p>
       </header>
 
       <div class="grid">
 
-        <!-- Relay 1 -->
+        <!-- Load A (R1+R2) -->
         <div class="card card--accent relay-card">
           <div class="card-header">
             <div class="relay-card-title">
-              <span class="relay-number">1</span>
-              <span class="card-title">Relay 1</span>
+              <span class="relay-number">A</span>
+              <span class="card-title">Load A</span>
+              <span class="ota-hint mono">R1+R2</span>
             </div>
             <span class="relay-badge" id="relay-badge-1">OFF</span>
           </div>
@@ -105,12 +106,13 @@
           </div>
         </div>
 
-        <!-- Relay 2 -->
+        <!-- Load B (R3+R4) -->
         <div class="card card--accent relay-card">
           <div class="card-header">
             <div class="relay-card-title">
-              <span class="relay-number">2</span>
-              <span class="card-title">Relay 2</span>
+              <span class="relay-number">B</span>
+              <span class="card-title">Load B</span>
+              <span class="ota-hint mono">R3+R4</span>
             </div>
             <span class="relay-badge" id="relay-badge-2">OFF</span>
           </div>
@@ -140,84 +142,6 @@
                 <span class="toggle-track"><span class="toggle-thumb"></span></span>
               </label>
               <button class="btn btn--ghost btn--sm" id="btn-save-schedule-2">Apply</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Relay 3 -->
-        <div class="card card--accent relay-card">
-          <div class="card-header">
-            <div class="relay-card-title">
-              <span class="relay-number">3</span>
-              <span class="card-title">Relay 3</span>
-            </div>
-            <span class="relay-badge" id="relay-badge-3">OFF</span>
-          </div>
-          <div class="relay-indicator" id="relay-indicator-3"></div>
-          <div class="relay-controls">
-            <button class="btn btn--primary btn--sm" id="btn-relay-3-on">ON</button>
-            <button class="btn btn--ghost btn--sm" id="btn-relay-3-off">OFF</button>
-          </div>
-          <div class="relay-schedule-block">
-            <div class="relay-schedule-header">
-              <span class="relay-schedule-label">Schedule</span>
-              <span class="schedule-badge" id="schedule-badge-3">OFF</span>
-            </div>
-            <div class="schedule-row">
-              <div class="field-group field-group--sm">
-                <label class="field-label" for="inp-schedule-3-start">Start</label>
-                <input class="field-input mono" type="time" id="inp-schedule-3-start" />
-              </div>
-              <div class="field-group field-group--sm">
-                <label class="field-label" for="inp-schedule-3-stop">Stop</label>
-                <input class="field-input mono" type="time" id="inp-schedule-3-stop" />
-              </div>
-            </div>
-            <div class="relay-schedule-footer">
-              <label class="toggle-switch toggle-switch--sm">
-                <input type="checkbox" id="tog-schedule-3" />
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              </label>
-              <button class="btn btn--ghost btn--sm" id="btn-save-schedule-3">Apply</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Relay 4 -->
-        <div class="card card--accent relay-card">
-          <div class="card-header">
-            <div class="relay-card-title">
-              <span class="relay-number">4</span>
-              <span class="card-title">Relay 4</span>
-            </div>
-            <span class="relay-badge" id="relay-badge-4">OFF</span>
-          </div>
-          <div class="relay-indicator" id="relay-indicator-4"></div>
-          <div class="relay-controls">
-            <button class="btn btn--primary btn--sm" id="btn-relay-4-on">ON</button>
-            <button class="btn btn--ghost btn--sm" id="btn-relay-4-off">OFF</button>
-          </div>
-          <div class="relay-schedule-block">
-            <div class="relay-schedule-header">
-              <span class="relay-schedule-label">Schedule</span>
-              <span class="schedule-badge" id="schedule-badge-4">OFF</span>
-            </div>
-            <div class="schedule-row">
-              <div class="field-group field-group--sm">
-                <label class="field-label" for="inp-schedule-4-start">Start</label>
-                <input class="field-input mono" type="time" id="inp-schedule-4-start" />
-              </div>
-              <div class="field-group field-group--sm">
-                <label class="field-label" for="inp-schedule-4-stop">Stop</label>
-                <input class="field-input mono" type="time" id="inp-schedule-4-stop" />
-              </div>
-            </div>
-            <div class="relay-schedule-footer">
-              <label class="toggle-switch toggle-switch--sm">
-                <input type="checkbox" id="tog-schedule-4" />
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              </label>
-              <button class="btn btn--ghost btn--sm" id="btn-save-schedule-4">Apply</button>
             </div>
           </div>
         </div>
