@@ -9,6 +9,14 @@ static const char* TAG = "OTA";
 
 #define OTA_BUFFER_SIZE 4096
 
+static int ota_recv(httpd_req_t* req, char* buf, int len) {
+  for (int tries = 0; tries < 5; tries++) {
+    int r = httpd_req_recv(req, buf, len);
+    if (r != HTTPD_SOCK_ERR_TIMEOUT) return r;
+  }
+  return HTTPD_SOCK_ERR_TIMEOUT;
+}
+
 esp_err_t ota_firmware_handler(httpd_req_t* req) {
   const esp_partition_t* update_partition =
       esp_ota_get_next_update_partition(NULL);
@@ -45,14 +53,10 @@ esp_err_t ota_firmware_handler(httpd_req_t* req) {
     int chunk_size =
         (remaining > OTA_BUFFER_SIZE) ? OTA_BUFFER_SIZE : remaining;
     received = httpd_req_recv(req, buffer, chunk_size);
-    if (received <= 0) {
-      ESP_LOGE(TAG, "Failed to receive chunk");
-      free(buffer);
-      esp_ota_abort(ota_handle);
-      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                          "Receive failed");
-      return ESP_FAIL;
-    }
+  if (req->content_len == 0 || req->content_len > update_partition->size) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware size");
+    return ESP_FAIL;
+  }
     err = esp_ota_write(ota_handle, buffer, received);
     if (err != ESP_OK) {
       ESP_LOGE(TAG, "esp_ota_write failed: %s", esp_err_to_name(err));
@@ -100,31 +104,25 @@ esp_err_t ota_webfs_handler(httpd_req_t* req) {
                         "Partition not found");
     return ESP_FAIL;
   }
-  ESP_LOGI(TAG, "Found partition: %s, size: %lu", partition->label,
-           partition->size);
-
-  esp_err_t err = esp_partition_erase_range(partition, 0, partition->size);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to erase partition: %s", esp_err_to_name(err));
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Erase failed");
+  if (req->content_len == 0 || req->content_len > partition->size) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid image size");
     return ESP_FAIL;
   }
-  ESP_LOGI(TAG, "Partition erased successfully");
 
   char* buffer = malloc(OTA_BUFFER_SIZE);
   if (buffer == NULL) {
-    ESP_LOGE(TAG, "Failed to allocate buffer");
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No memory");
     return ESP_FAIL;
   }
 
   int remaining = req->content_len;
   uint32_t offset = 0;
+  bool erased = false;
 
   while (remaining > 0) {
     int chunk_size =
         (remaining > OTA_BUFFER_SIZE) ? OTA_BUFFER_SIZE : remaining;
-    int received = httpd_req_recv(req, buffer, chunk_size);
+    int received = ota_recv(req, buffer, chunk_size);
     if (received <= 0) {
       ESP_LOGE(TAG, "Failed to receive chunk");
       free(buffer);
@@ -133,24 +131,32 @@ esp_err_t ota_webfs_handler(httpd_req_t* req) {
       return ESP_FAIL;
     }
 
-    err = esp_partition_write(partition, offset, buffer, received);
+    if (!erased) {  // erase only after the first data actually arrived
+      esp_err_t e = esp_partition_erase_range(partition, 0, partition->size);
+      if (e != ESP_OK) {
+        free(buffer);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                            "Erase failed");
+        return ESP_FAIL;
+      }
+      erased = true;
+    }
+
+    esp_err_t err = esp_partition_write(partition, offset, buffer, received);
     if (err != ESP_OK) {
       ESP_LOGE(TAG, "esp_partition_write failed: %s", esp_err_to_name(err));
       free(buffer);
       httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Write failed");
       return ESP_FAIL;
     }
-
     offset += received;
     remaining -= received;
   }
 
   free(buffer);
-
   httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   ESP_LOGI(TAG, "WebFS OTA successful, rebooting...");
   vTaskDelay(pdMS_TO_TICKS(1000));
   esp_restart();
-
   return ESP_OK;
 }

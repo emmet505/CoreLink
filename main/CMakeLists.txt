@@ -29,6 +29,7 @@ idf_component_register(
         "modules/relay"
     REQUIRES
         esp_wifi
+        esp_timer
         esp_netif
         esp_event
         nvs_flash

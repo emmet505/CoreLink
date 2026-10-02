@@ -36,13 +36,9 @@ typedef struct {
     /* system */
     int64_t uptime_seconds;
 
-    /* CPU */
-    float cpu_usage_core0;
-    float cpu_usage_core1;
 
 } system_status_t;
 
 
-int64_t esp_timer_get_time(void);
 void system_monitor_print();
 void system_monitor_get_status(system_status_t* status);

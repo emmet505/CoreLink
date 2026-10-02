@@ -77,7 +77,7 @@ static void set_defaults(wifi_config_store_t* cfg) {
   snprintf(cfg->gateway, sizeof(cfg->gateway), "%s", CONFIG_WIFI_DEFAULT_GATEWAY);
   snprintf(cfg->netmask, sizeof(cfg->netmask), "%s", CONFIG_WIFI_DEFAULT_NETMASK);
   snprintf(cfg->dns,     sizeof(cfg->dns),     "%s", "8.8.8.8");
-  cfg->dhcp = false;
+  cfg->dhcp = true;
 
   /* STA */
   snprintf(cfg->sta_ssid,     sizeof(cfg->sta_ssid),     "%s", CONFIG_WIFI_REMOTE_SSID);
