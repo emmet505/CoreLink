@@ -1,29 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "captive_portal.h"
 #include "esp_event.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "time_handler.h"
 #include "led_status.h"
 #include "modules/filesystem/filesystem.h"
 #include "modules/http_server/http_server.h"
-#include "modules/system_monitor/system_monitor.h"
 #include "modules/relay/relay.h"
+#include "modules/system_monitor/system_monitor.h"
 #include "modules/wifi/wifi.h"
 #include "nvs_flash.h"
 #include "pow_man.h"
-#include "modules/Network/dns_server.h"
+#include "time_handler.h"
 #include "wifi_config_store.h"
 
 static const char* TAG = "APP";
 
 static void monitor_task(void* pvParameters);
-
 
 static void monitor_task(void* pvParameters) {
   while (1) {
@@ -37,8 +34,6 @@ static void monitor_task(void* pvParameters) {
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
 }
-
-
 
 void app_main(void) {
   ESP_LOGI(TAG, "Simple IoT House (core %d)", xPortGetCoreID());
@@ -82,8 +77,6 @@ void app_main(void) {
   ESP_LOGI(TAG, "HTTP server ready (core %d)", xPortGetCoreID());
 
   xTaskCreate(monitor_task, "monitor", 2048, NULL, tskIDLE_PRIORITY, NULL);
-
-
 
   // Uncomment to heap stress test
   // xTaskCreate(heap_stress_task, "heap_stress", 4096, NULL, tskIDLE_PRIORITY,

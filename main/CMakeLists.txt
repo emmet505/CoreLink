@@ -2,8 +2,6 @@ idf_component_register(
     SRCS
         "main.c"
         "modules/wifi/wifi.c"
-        "utils/captive_portal/captive_portal.c"
-        "modules/Network/dns_server.c"
         "utils/OTA/ota_handler.c"
         "modules/wifi/wifi_config_store.c"
         "modules/http_server/http_server.c"
@@ -23,7 +21,6 @@ idf_component_register(
         "modules/http_server"
         "modules/filesystem"
         "modules/system_monitor"
-        "utils/captive_portal"
         "modules/Network"
         "utils/OTA"
         "modules/status"

@@ -14,7 +14,7 @@
 static const char* TAG = "LED";
 
 #define LED_GPIO 48
-#define LED_BRIGHTNESS 15
+#define LED_BRIGHTNESS 5
 
 static led_strip_handle_t s_led      = NULL;
 static bool               s_enable   = true;

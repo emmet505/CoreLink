@@ -2,7 +2,6 @@
 
 #include <string.h>
 
-#include "dns_server.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -21,25 +20,10 @@ static esp_netif_t* netif_ap = NULL;
 static esp_netif_t* netif_sta = NULL;
 static volatile int connected_clients = 0;
 static volatile bool s_sta_connected = false;
-static dns_server_handle_t s_dns_handle = NULL;
 static uint8_t s_sta_retry = 0;
 static uint8_t s_sta_max_retry = 5;
 
 /* ── Helpers ─────────────────────────────────────────────────── */
-
-static void dns_start(void) {
-  if (s_dns_handle != NULL) return;
-  dns_server_config_t cfg = DNS_SERVER_CONFIG_SINGLE("*", "WIFI_AP_DEF");
-  s_dns_handle = start_dns_server(&cfg);
-  ESP_LOGI(TAG, "DNS server started (captive portal active)");
-}
-
-static void dns_stop(void) {
-  if (s_dns_handle == NULL) return;
-  stop_dns_server(s_dns_handle);
-  s_dns_handle = NULL;
-  ESP_LOGI(TAG, "DNS server stopped (internet DNS active)");
-}
 
 /* ── Reconnect task ──────────────────────────────────────────── */
 
@@ -79,7 +63,6 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
     s_sta_connected = false;
-    dns_start();
 
     if (s_sta_retry < s_sta_max_retry) {
       s_sta_retry++;
@@ -101,7 +84,6 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 
     s_sta_retry = 0;  // reset retry counter on success
     s_sta_connected = true;
-    dns_stop();
 
     if (time_start_ntp() != ESP_OK) {
       ESP_LOGW(TAG, "Failed to start SNTP after station connected");
@@ -237,16 +219,6 @@ esp_err_t wifi_init(void) {
     return ESP_FAIL;
   }
 
-  /* ── DHCP option 114 (captive portal URI) ── */
-  char portal_url[32];
-  snprintf(portal_url, sizeof(portal_url), "http://%s/", cfg.ip);
-  esp_err_t dhcp_err = esp_netif_dhcps_option(netif_ap, ESP_NETIF_OP_SET,
-                                              (esp_netif_dhcp_option_id_t)114,
-                                              portal_url, strlen(portal_url));
-  if (dhcp_err != ESP_OK) {
-    ESP_LOGW(TAG, "DHCP option 114 failed: %s", esp_err_to_name(dhcp_err));
-  }
-
   if (esp_netif_dhcps_start(netif_ap) != ESP_OK) {
     ESP_LOGE(TAG, "Failed to start DHCP server");
     return ESP_FAIL;
@@ -257,9 +229,6 @@ esp_err_t wifi_init(void) {
     led_status_raise(LED_ERR_WIFI);
     return ESP_FAIL;
   }
-
-  /* Start DNS for captive portal — will be stopped when STA connects */
-  dns_start();
 
   ESP_LOGI(TAG, "AP  SSID: %s | IP: %s | CH: %u | Max: %u", cfg.ssid, cfg.ip,
            cfg.channel, cfg.max_connections);
@@ -273,7 +242,6 @@ esp_err_t wifi_init(void) {
 void wifi_stop(void) {
   if (netif_ap == NULL) return;
 
-  dns_stop();
   esp_wifi_stop();
 
 #if CONFIG_LWIP_IPV4_NAPT

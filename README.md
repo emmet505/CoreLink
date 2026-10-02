@@ -67,7 +67,7 @@ CoreLink یک سیستم کنترل خانگی است که روی میکروکن
 ۳. با رمز عبور **`12345678`** وصل شوید.
 ۴. مرورگر خود را باز کنید و به آدرس **`http://192.168.4.1`** بروید.
 
-> در اکثر گوشی‌ها بلافاصله پس از اتصال، صفحه Captive Portal به صورت خودکار باز می‌شود.
+
 
 ---
 
@@ -189,8 +189,7 @@ CoreLink/
 │   │   └── time_management/
 │   │       └── time_handler.c/.h       # SNTP، fallback از مرورگر، تنظیمات NVS
 │   └── utils/
-│       ├── captive_portal/
-│       │   └── captive_portal.c/.h     # ثبت URI های تشخیص captive
+|       |
 │       └── OTA/
 │           └── ota_handler.c/.h        # دریافت و نوشتن firmware/webfs
 ├── web/                                # فایل‌های فرانت‌اند (→ LittleFS)
@@ -237,9 +236,7 @@ nvs_flash_init()
 
 دستگاه در حالت **APSTA** کار می‌کند: همزمان Access Point و Station است.
 
-**منطق DNS:**
-- وقتی STA متصل **نیست**: DNS server فعال است تا تمام درخواست‌ها را به IP اکسس پوینت هدایت کند (captive portal).
-- وقتی STA متصل **شد**: DNS server متوقف می‌شود و DNS روتر خانگی به کلاینت‌های AP منتقل می‌شود.
+
 
 **منطق retry اتصال STA:**
 اگر اتصال به روتر قطع شود، با تاخیر نمایی (exponential backoff) تلاش مجدد می‌شود. حداکثر تاخیر ۳۰ ثانیه است. پس از رسیدن به `sta_max_retry`، دستگاه در حالت AP-only می‌ماند.

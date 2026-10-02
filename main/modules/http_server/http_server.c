@@ -6,7 +6,6 @@
 
 #include "../../../../.espressif/v6.0.1/esp-idf/components/esp_http_server/include/esp_http_server.h"
 #include "cJSON.h"
-#include "captive_portal.h"
 #include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
@@ -282,12 +281,6 @@ esp_err_t http_server_start(void) {
       .user_ctx = NULL,
   };
   httpd_register_uri_handler(s_server, &ota_webfs_uri);
-
-  esp_err_t cp_err = captive_portal_register(s_server);
-  if (cp_err != ESP_OK) {
-    ESP_LOGE(TAG, "captive portal register failed");
-    return cp_err;
-  }
 
   httpd_uri_t led_uri = {
       .uri = "/api/led",

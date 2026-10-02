@@ -15,8 +15,8 @@ static const char* NVS_NAMESPACE = "relay_cfg";
 
 #define RELAY_COUNT 4
 
-static const gpio_num_t RELAY_GPIOS[RELAY_COUNT] = {GPIO_NUM_15, GPIO_NUM_16,
-                                                    GPIO_NUM_17, GPIO_NUM_18};
+static const gpio_num_t RELAY_GPIOS[RELAY_COUNT] = {GPIO_NUM_18, GPIO_NUM_17,
+                                                    GPIO_NUM_16, GPIO_NUM_15};
 
 static relay_state_t s_relays[RELAY_COUNT];
 static SemaphoreHandle_t s_mutex = NULL;
