@@ -219,15 +219,19 @@ esp_err_t wifi_init(void) {
   }
 
   /* ── Static IP for AP ── */
-  esp_netif_ip_info_t ip_info = {0};
-  if (esp_netif_str_to_ip4(cfg.ip, &ip_info.ip) != ESP_OK) {
+   esp_netif_ip_info_t ip_info = {0};
+  const char* ip_str   = cfg.dhcp ? CONFIG_WIFI_DEFAULT_IP      : cfg.ip;
+  const char* gw_str   = cfg.dhcp ? CONFIG_WIFI_DEFAULT_GATEWAY : cfg.gateway;
+  const char* mask_str = cfg.dhcp ? "255.255.255.0"             : cfg.netmask;
+
+  if (esp_netif_str_to_ip4(ip_str, &ip_info.ip) != ESP_OK) {
     ESP_LOGW(TAG, "Invalid IP, using default");
     IP4_ADDR(&ip_info.ip, 192, 168, 4, 1);
   }
-  if (esp_netif_str_to_ip4(cfg.gateway, &ip_info.gw) != ESP_OK) {
+  if (esp_netif_str_to_ip4(gw_str, &ip_info.gw) != ESP_OK) {
     IP4_ADDR(&ip_info.gw, 192, 168, 4, 1);
   }
-  if (esp_netif_str_to_ip4(cfg.netmask, &ip_info.netmask) != ESP_OK) {
+  if (esp_netif_str_to_ip4(mask_str, &ip_info.netmask) != ESP_OK) {
     IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
   }
 

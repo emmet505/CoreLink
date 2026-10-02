@@ -36,9 +36,7 @@ typedef struct {
     /* system */
     int64_t uptime_seconds;
 
-    /* CPU */
-    float cpu_usage_core0;
-    float cpu_usage_core1;
+
 
 } system_status_t;
 
