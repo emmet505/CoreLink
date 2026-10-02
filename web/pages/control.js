@@ -45,7 +45,6 @@ const RELAY_POLL_MS = 5000;   // the scheduler can switch loads on its own
 let telPollTimer   = null;
 let relayPollTimer = null;
 let _relayBusy     = false;   // a switch request is in flight
-let _conflictShown = false;
 
 function bytesToKB(b) { return (b / 1024).toFixed(0) + ' KB'; }
 
@@ -164,7 +163,7 @@ function applyRelayState(state, withSchedule = true) {
   const r = Control.relays[index];
   if (!r) return;
 
-  const partial = !state.is_on && (state.phase_on || state.neutral_on);
+  const partial = state.phase_on !== state.neutral_on;
   setRelayUI(index, state.is_on, partial);
 
   if (!withSchedule) return;
@@ -181,11 +180,6 @@ async function fetchRelayStates(withSchedule = true) {
     const states = await API.getRelayStates();
     states.forEach((s) => applyRelayState(s, withSchedule));
 
-    const conflict = states.some((s) => s.conflict);
-    if (conflict && !_conflictShown) {
-      showToast('Schedules of Load A and B overlap — nothing is switched on during the overlap', 'warn', 6000);
-    }
-    _conflictShown = conflict;
   } catch (err) {
     console.warn('[relays] state fetch failed:', err.message);
   }
@@ -279,10 +273,8 @@ function initRelayCard(n) {
         'success'
       );
     } catch (err) {
-      // e.g. "Schedule overlaps with the other group" (device answers 409)
       showToast('Schedule failed: ' + err.message, 'error', 5000);
-      setScheduleBadge(i, false);
-      r.togSchedule.checked = false;
+      await fetchRelayStates(true);
     } finally {
       r.btnApply.disabled = false;
     }

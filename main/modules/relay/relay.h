@@ -11,10 +11,9 @@
  *   Group A = relay 1 (phase) + relay 2 (neutral)
  *   Group B = relay 3 (phase) + relay 4 (neutral)
  *
- * SAFETY RULE: Group A and Group B must never be energized together.
- * It is enforced inside relay.c, in the single hardware layer that every
- * caller (API, scheduler, E-stop) goes through. Nothing outside relay.c
- * can touch the relay GPIOs.
+ * Group A's output is reverse-wired: its load is ON when relays 1 and 2 are
+ * de-energized. A request to turn B ON first turns A's output OFF, observes
+ * dead time, then turns B ON. Turning A ON first turns B OFF.
  */
 #define RELAY_GROUP_COUNT 2
 
@@ -35,27 +34,26 @@ typedef struct {
 } relay_schedule_t;
 
 typedef struct {
-  bool is_on;  // true only when BOTH relays of the group are ON
+  bool is_on;  // logical load output state, not relay-coil state
   relay_schedule_t schedule;
 } relay_group_state_t;
 
-/* All relays OFF, schedules loaded from NVS, scheduler task started. */
+/* Both load outputs OFF, schedules loaded from NVS, scheduler started. */
 esp_err_t relay_init(void);
 
 /*
  * Turn a group ON or OFF through the safety layer.
- * Turning a group ON while the other group is ON performs the safe sequence:
- * other group OFF -> verify -> dead time -> this group ON.
- * Blocks for up to ~0.7 s while such a transition runs.
+ * Turning B ON automatically turns A's output OFF first if needed.
+ * Turning A ON first turns B OFF and observes dead time.
  */
 esp_err_t relay_group_set(relay_group_t group, bool on);
 
 esp_err_t relay_group_get_state(relay_group_t group, relay_group_state_t* out);
 
-/* Forces every relay OFF and disables the schedules (RAM only). */
+/* Turns both load outputs OFF and disables schedules (RAM only). */
 void relay_emergency_stop_all(void);
 
 /* HTTP handlers */
 esp_err_t relay_handler_set(httpd_req_t* req);       // POST /api/relay
 esp_err_t relay_handler_schedule(httpd_req_t* req);  // POST /api/relay/schedule
-esp_err_t relay_get_state_handler(httpd_req_t* req); // GET  /api/relay/state
+esp_err_t relay_get_state_handler(httpd_req_t* req);  // GET  /api/relay/state
