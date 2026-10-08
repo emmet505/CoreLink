@@ -1,5 +1,4 @@
-#ifndef WIFI_CONFIG_STORE_H
-#define WIFI_CONFIG_STORE_H
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -28,4 +27,3 @@ esp_err_t wifi_config_load(wifi_config_store_t* out_cfg);
 esp_err_t wifi_config_save(const wifi_config_store_t* cfg);
 esp_err_t wifi_config_erase(void);
 
-#endif

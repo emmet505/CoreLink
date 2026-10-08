@@ -24,8 +24,8 @@ static const char* NVS_NAMESPACE = "relay_cfg";
 #define RELAY_SCHED_POLL_MS 5000
 
 /* Relay i (0..3) -> GPIO. Boards are active-low: level 0 = relay ON. */
-static const gpio_num_t RELAY_GPIOS[RELAY_COUNT] = {GPIO_NUM_18, GPIO_NUM_17,
-                                                    GPIO_NUM_16, GPIO_NUM_15};
+static const gpio_num_t RELAY_GPIOS[RELAY_COUNT] = {GPIO_NUM_9, GPIO_NUM_3,
+                                                    GPIO_NUM_8, GPIO_NUM_18};
 
 /* Group g: relay 2g = phase, relay 2g+1 = neutral. */
 static inline int phase_relay(int g) { return g * 2; }

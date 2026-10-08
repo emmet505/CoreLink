@@ -1,5 +1,4 @@
-#ifndef WIFI_CONFIG_H
-#define WIFI_CONFIG_H
+#pragma once
 
 // WIFI AP SETTINGS
 #define WIFI_AP_SSID            "ESP32-AP"

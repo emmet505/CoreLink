@@ -1,5 +1,4 @@
-#ifndef WIFI_MODULE_H
-#define WIFI_MODULE_H
+#pragma once
 
 #include "esp_err.h"
 
@@ -21,5 +20,3 @@ void wifi_stop(void);
 uint8_t wifi_get_connected_clients(void);
 
 bool wifi_is_sta_connected(void);
-
-#endif 
