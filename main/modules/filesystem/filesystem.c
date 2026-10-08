@@ -2,11 +2,28 @@
 
 #include "esp_littlefs.h"
 #include "esp_log.h"
-
+#include <sys/stat.h>
 #include "led_status.h"
 
 
 static const char* TAG = "filesystem";
+
+static void filesystem_check(const char* label) {
+  struct stat st;
+  if (stat("/littlefs/index.html", &st) != 0) { // if exists, stat returns 0, otherwise -1
+    ESP_LOGE(TAG, "index.html missing in LittleFS");
+    led_status_raise(LED_ERR_FILESYSTEM);
+  }
+
+  size_t total = 0, used = 0;
+  if (esp_littlefs_info(label, &total, &used) == ESP_OK) {
+    ESP_LOGI(TAG, "LittleFS: %zu / %zu bytes used", used, total);
+    if (used * 100 > total * 90) {
+      ESP_LOGW(TAG, "LittleFS almost full");
+    }
+  }
+}
+
 
 esp_err_t filesystem_init(void) {
   esp_vfs_littlefs_conf_t conf = {
@@ -23,22 +40,7 @@ esp_err_t filesystem_init(void) {
     return ret;
   }
 
-  size_t total = 0;
-  size_t used = 0;
-
-  FILE* f = fopen("/littlefs/index.html", "r");
-
-  if (f) {
-    ESP_LOGI(TAG, "index.html exists in LittleFS");
-    fclose(f);
-  } else {
-    ESP_LOGE(TAG, "index.html missing in LittleFS");
-  }
-  ret = esp_littlefs_info(conf.partition_label, &total, &used);
-
-  if (ret == ESP_OK) {
-    ESP_LOGI(TAG, "LittleFS total: %d, used: %d", total, used);
-  }
+  filesystem_check(conf.partition_label);
 
   return ESP_OK;
 }

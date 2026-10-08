@@ -4,10 +4,10 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "nvs_flash.h"
-#include "wifi_config_store.h"
-#include "relay.h"
 #include "led_status.h"
+#include "nvs_flash.h"
+#include "relay.h"
+#include "wifi_config_store.h"
 
 static const char* TAG = "ResetBtn";
 
@@ -50,25 +50,23 @@ esp_err_t reset_button_init() {
   return ESP_OK;
 }
 
-void pow_man_factory_reset(void){
+void pow_man_factory_reset(void) {
   wifi_config_erase();
   nvs_flash_erase();
   nvs_flash_init();
   esp_restart();
 }
 
-void pow_man_reboot(void){
-  esp_restart();
-}
+void pow_man_reboot(void) { esp_restart(); }
 
 void power_manager_emergency_stop(void) {
-    ESP_LOGW(TAG, "Emergency stop triggered!");
+  ESP_LOGW(TAG, "Emergency stop triggered!");
 
-    for (uint8_t i = 1; i <= 4; i++) {
-        relay_emergency_stop(i);
-    }
+  for (uint8_t i = 1; i <= 4; i++) {
+    relay_emergency_stop(i);
+  }
 
-    led_status_raise(LED_ERR_ESTOP);
+  led_status_raise(LED_ERR_ESTOP);
 
-    ESP_LOGW(TAG, "All relays OFF, schedules disabled");
+  ESP_LOGW(TAG, "All relays OFF, schedules disabled");
 }
