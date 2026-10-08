@@ -11,9 +11,9 @@
  *   Group A = relay 1 (phase) + relay 2 (neutral)
  *   Group B = relay 3 (phase) + relay 4 (neutral)
  *
- * Group A's output is reverse-wired: its load is ON when relays 1 and 2 are
- * de-energized. A request to turn B ON first turns A's output OFF, observes
- * dead time, then turns B ON. Turning A ON first turns B OFF.
+ * A load is ON only when both of its relays are energized. A request to turn
+ * either load ON first turns the other load OFF, observes dead time, then
+ * energizes the requested pair.
  */
 #define RELAY_GROUP_COUNT 2
 
@@ -43,8 +43,9 @@ esp_err_t relay_init(void);
 
 /*
  * Turn a group ON or OFF through the safety layer.
- * Turning B ON automatically turns A's output OFF first if needed.
- * Turning A ON first turns B OFF and observes dead time.
+ * Turning either group ON automatically turns the other group OFF first if
+ * needed, then observes dead time before energizing the requested pair.
+ * Manual calls override schedules until the next schedule boundary.
  */
 esp_err_t relay_group_set(relay_group_t group, bool on);
 

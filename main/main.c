@@ -1,30 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "captive_portal.h"
 #include "esp_event.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "time_handler.h"
 #include "led_status.h"
 #include "modules/filesystem/filesystem.h"
 #include "modules/http_server/http_server.h"
-#include "modules/system_monitor/system_monitor.h"
 #include "modules/relay/relay.h"
+#include "modules/system_monitor/system_monitor.h"
 #include "modules/wifi/wifi.h"
 #include "nvs_flash.h"
 #include "pow_man.h"
-#include "modules/Network/dns_server.h"
+#include "time_handler.h"
 #include "wifi_config_store.h"
 
 static const char* TAG = "APP";
 
 static void monitor_task(void* pvParameters);
-
-
+static void cpu_usage_task(void* arg);
 static void monitor_task(void* pvParameters) {
   while (1) {
     time_print_current();
@@ -32,16 +29,14 @@ static void monitor_task(void* pvParameters) {
     int clients = wifi_get_connected_clients();
     ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients,
              xPortGetCoreID());
-    // ESP_LOGI("monitor_task", "relays status:");
-    // relay_status_getter();
+
+
     vTaskDelay(pdMS_TO_TICKS(2000));
   }
 }
 
-
-
 void app_main(void) {
-  ESP_LOGI(TAG, "Simple IoT House (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "Simple IoT House (core %d)");
 
   esp_err_t ret = nvs_flash_init();
 
@@ -51,39 +46,40 @@ void app_main(void) {
     ESP_ERROR_CHECK(nvs_flash_erase());
     ret = nvs_flash_init();
   }
+
+  
+  
   ESP_ERROR_CHECK(ret);
-  ESP_LOGI(TAG, "NVS ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "NVS ready (core %d)");
 
   ESP_ERROR_CHECK(reset_button_init());
-  ESP_LOGI(TAG, "Reset button ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "Reset button ready (core %d)");
 
   ESP_ERROR_CHECK(esp_netif_init());
-  ESP_LOGI(TAG, "Network stack ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "Network stack ready (core %d)");
 
   ESP_ERROR_CHECK(esp_event_loop_create_default());
-  ESP_LOGI(TAG, "Event loop ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "Event loop ready (core %d)");
 
   ESP_ERROR_CHECK(relay_init());
 
   ESP_ERROR_CHECK(led_status_init());
-  ESP_LOGI(TAG, "LED status ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "LED status ready (core %d)");
 
   esp_err_t err = wifi_init();
   if (err != ESP_OK) {
     led_status_raise(LED_ERR_WIFI);
     ESP_LOGE(TAG, "WiFi init failed: %s", esp_err_to_name(err));
   }
-  ESP_LOGI(TAG, "WiFi ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "WiFi ready (core %d)");
 
   ESP_ERROR_CHECK(filesystem_init());
-  ESP_LOGI(TAG, "Filesystem ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "Filesystem ready (core %d)");
 
   ESP_ERROR_CHECK(http_server_start());
-  ESP_LOGI(TAG, "HTTP server ready (core %d)", xPortGetCoreID());
+  ESP_LOGI(TAG, "HTTP server ready (core %d)");
 
   xTaskCreate(monitor_task, "monitor", 2048, NULL, tskIDLE_PRIORITY, NULL);
-
-
 
   // Uncomment to heap stress test
   // xTaskCreate(heap_stress_task, "heap_stress", 4096, NULL, tskIDLE_PRIORITY,
@@ -94,26 +90,9 @@ void app_main(void) {
   ESP_LOGI(TAG, "Device is ready");
   ESP_LOGI(TAG, "CPU cores available: %d", portNUM_PROCESSORS);
 
-  // system_monitor_print();
-  // system_status_t status;
-  // system_monitor_get_status(&status);
-  // ESP_LOGI(TAG, "Free Heap      : %u", status.free_heap);
-  // ESP_LOGI(TAG, "Total Heap     : %u", status.total_heap);
-  // ESP_LOGI(TAG, "Min Free Heap  : %u", status.minimum_free_heap);
-  // ESP_LOGI(TAG, "Heap Usage     : %.1f %%", status.heap_usage);
+  xTaskCreate(cpu_usage_task, "cpu_usage", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
-  // ESP_LOGI(TAG, "CPU Cores      : %lu", status.cpu_cores);
-
-  // ESP_LOGI(TAG, "Internal RAM   : %u KB", status.internal / 1024);
-
-  // ESP_LOGI(TAG, "PSRAM          : %zu KB", status.psram_size / 1024);
-  // ESP_LOGI(TAG, "Flash_size     : %zu KB ", status.flash_size / 1024);
 }
-
-// static void test_runtime_stats(void) {
-//   UBaseType_t task_count = uxTaskGetNumberOfTasks();
-//   ESP_LOGI(TAG, "Number of tasks: %u", (unsigned)task_count);
-// }
 
 static void heap_stress_task(void* pvParameters) {
   void* blocks[300] = {0};
@@ -140,5 +119,37 @@ static void heap_stress_task(void* pvParameters) {
       if (count == 0) filling = true;
     }
     vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
+static void cpu_usage_task(void* arg) {
+  while (1) {
+    UBaseType_t n = uxTaskGetNumberOfTasks() + 4; // number of tasks + some buffer
+    TaskStatus_t* a = malloc(n * sizeof(TaskStatus_t)); // allocate memory for task status array
+    TaskStatus_t* b = malloc(n * sizeof(TaskStatus_t));
+    if (a == NULL || b == NULL) { free(a); free(b); vTaskDelay(pdMS_TO_TICKS(5000)); continue; }
+
+    configRUN_TIME_COUNTER_TYPE t1, t2;  // variables to hold the total run time counters
+    UBaseType_t na = uxTaskGetSystemState(a, n, &t1); // get the system state and total run time at time t1
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    UBaseType_t nb = uxTaskGetSystemState(b, n, &t2);
+
+    uint32_t total = (uint32_t)(t2 - t1);
+    if (total > 0) {
+      for (UBaseType_t i = 0; i < na; i++) {
+        // uncomment to see tasks name
+        // ESP_LOGI("TASKS", "%s", a[i].pcTaskName);
+        if (strncmp(a[i].pcTaskName, "IDLE", 4) != 0) continue;
+        for (UBaseType_t j = 0; j < nb; j++) {
+          if (b[j].xHandle != a[i].xHandle) continue;
+          uint32_t idle = (uint32_t)(b[j].ulRunTimeCounter - a[i].ulRunTimeCounter);
+          float usage = 100.0f - (idle * 100.0f / total);
+          ESP_LOGI("CPU", "%s: busy %.1f%%", a[i].pcTaskName, usage);
+        }
+      }
+    }
+    free(a);
+    free(b);
+    vTaskDelay(pdMS_TO_TICKS(800));
   }
 }

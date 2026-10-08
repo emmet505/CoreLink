@@ -20,7 +20,7 @@ static const char* NVS_NAMESPACE = "relay_cfg";
 #define RELAY_COUNT 4
 #define RELAY_BODY_MAX 256
 #define RELAY_GAP_MS 50        /* phase/neutral spacing inside one group */
-#define RELAY_DEAD_TIME_MS 500 /* B OFF before Group A output ON */
+#define RELAY_DEAD_TIME_MS 500 /* wait after one load is OFF before the other */
 #define RELAY_SCHED_POLL_MS 5000
 
 /* Relay i (0..3) -> GPIO. Boards are active-low: level 0 = relay ON. */
@@ -46,8 +46,12 @@ static SemaphoreHandle_t s_data_mutex = NULL;
 static relay_group_state_t s_groups[RELAY_GROUP_COUNT];
 static atomic_bool s_abort = false; /* set by E-stop to cancel transitions */
 static bool s_schedule_conflict = false;
+static bool s_manual_override = false;
+static bool s_manual_schedule_active[RELAY_GROUP_COUNT];
 
 static void relay_schedule_task(void* arg);
+static bool relay_schedule_is_active(const relay_schedule_t* schedule,
+                                     uint16_t current_minute);
 
 /* ══════════════════════════════════════════════════════════════════════════
  *  Hardware layer — the ONLY code that writes relay GPIOs
@@ -72,7 +76,7 @@ static bool group_hw_all_on(int g) {
 }
 
 static bool group_output_is_on(int g) {
-  return g == RELAY_GROUP_A ? !group_hw_any_on(g) : group_hw_all_on(g);
+  return group_hw_all_on(g);
 }
 
 static void delay_ms(uint32_t ms) { vTaskDelay(pdMS_TO_TICKS(ms)); }
@@ -83,6 +87,13 @@ static void data_set_on(int g, bool on) {
   xSemaphoreGive(s_data_mutex);
 }
 
+static uint16_t current_minute_of_day(void) {
+  time_t now = time(NULL);
+  struct tm lt;
+  localtime_r(&now, &lt);
+  return (uint16_t)(lt.tm_hour * 60 + lt.tm_min);
+}
+
 /* De-energize coils phase first, then neutral. */
 static void group_coils_off(int g) {
   hw_write(phase_relay(g), false);
@@ -90,16 +101,16 @@ static void group_coils_off(int g) {
   hw_write(neutral_relay(g), false);
 }
 
-/* Energize relay coils: neutral first, then phase. B may energize only while
- * both reverse-wired A relay coils are energized. */
+/* Energize a group's relay coils: neutral first, then phase. */
 static esp_err_t group_coils_on(int g) {
-  if (g == RELAY_GROUP_B && !group_hw_all_on(RELAY_GROUP_A)) {
-    ESP_LOGE(TAG, "INTERLOCK: Group A relays are not both ON, refusing B ON");
+  if (s_abort || group_hw_any_on(1 - g)) {
+    ESP_LOGE(TAG, "INTERLOCK: refusing Group %c ON while the other group is active",
+             group_name(g));
     return ESP_ERR_INVALID_STATE;
   }
   hw_write(neutral_relay(g), true);
   delay_ms(RELAY_GAP_MS);
-  if (s_abort || (g == RELAY_GROUP_B && !group_hw_all_on(RELAY_GROUP_A))) {
+  if (s_abort || group_hw_any_on(1 - g)) {
     hw_write(neutral_relay(g), false);
     return ESP_ERR_INVALID_STATE;
   }
@@ -111,30 +122,16 @@ static esp_err_t group_coils_on(int g) {
 static esp_err_t group_apply_locked(int g, bool on) {
   if (s_abort) return ESP_ERR_INVALID_STATE;
 
-  if (g == RELAY_GROUP_A) {
-    if (on) {
-      if (group_hw_any_on(RELAY_GROUP_B)) {
-        group_coils_off(RELAY_GROUP_B);
-        data_set_on(RELAY_GROUP_B, false);
-        delay_ms(RELAY_DEAD_TIME_MS);
-      }
-      if (group_hw_any_on(RELAY_GROUP_B)) return ESP_FAIL;
-      if (group_hw_any_on(g)) group_coils_off(g);
-    } else {
-      if (!group_hw_all_on(g)) {
-        esp_err_t err = group_coils_on(g);
-        if (err != ESP_OK) return err;
-      }
-    }
-  } else if (on) {
-    if (!group_hw_all_on(RELAY_GROUP_A)) {
-      ESP_LOGI(TAG, "Switching: Group A output OFF before Group B ON");
-      esp_err_t err = group_coils_on(RELAY_GROUP_A);
-      if (err != ESP_OK) return err;
-      data_set_on(RELAY_GROUP_A, false);
+  if (on) {
+    int other = 1 - g;
+    if (group_hw_any_on(other)) {
+      ESP_LOGI(TAG, "Switching: Group %c OFF before Group %c ON",
+               group_name(other), group_name(g));
+      group_coils_off(other);
+      data_set_on(other, false);
       delay_ms(RELAY_DEAD_TIME_MS);
       if (s_abort) return ESP_ERR_INVALID_STATE;
-      if (!group_hw_all_on(RELAY_GROUP_A)) return ESP_FAIL;
+      if (group_hw_any_on(other)) return ESP_FAIL;
     }
     if (!group_hw_all_on(g)) {
       esp_err_t err = group_coils_on(g);
@@ -153,44 +150,71 @@ static esp_err_t group_apply_locked(int g, bool on) {
   return ESP_OK;
 }
 
-esp_err_t relay_group_set(relay_group_t group, bool on) {
+static esp_err_t relay_group_set_internal(relay_group_t group, bool on,
+                                          bool manual) {
   if ((unsigned)group >= RELAY_GROUP_COUNT) return ESP_ERR_INVALID_ARG;
   if (s_switch_mutex == NULL) return ESP_ERR_INVALID_STATE;
 
   xSemaphoreTake(s_switch_mutex, portMAX_DELAY);
-  esp_err_t err = group_apply_locked((int)group, on);
+  xSemaphoreTake(s_data_mutex, portMAX_DELAY);
+  bool manual_override_active = s_manual_override;
+  xSemaphoreGive(s_data_mutex);
+
+  esp_err_t err;
+  if (!manual && manual_override_active) {
+    err = ESP_OK;
+  } else {
+    err = group_apply_locked((int)group, on);
+    if (err == ESP_OK && manual) {
+      uint16_t minute = current_minute_of_day();
+      xSemaphoreTake(s_data_mutex, portMAX_DELAY);
+      s_manual_override = true;
+      for (int g = 0; g < RELAY_GROUP_COUNT; g++) {
+        s_manual_schedule_active[g] =
+            s_groups[g].schedule.enabled &&
+            relay_schedule_is_active(&s_groups[g].schedule, minute);
+      }
+      xSemaphoreGive(s_data_mutex);
+      ESP_LOGI(TAG, "Manual relay override active until the next schedule transition");
+    }
+  }
   xSemaphoreGive(s_switch_mutex);
   return err;
+}
+
+esp_err_t relay_group_set(relay_group_t group, bool on) {
+  return relay_group_set_internal(group, on, true);
 }
 
 void relay_emergency_stop_all(void) {
   if (s_switch_mutex == NULL) return;
 
-  /* Stop B before forcing the reverse-wired A output OFF. */
+  /* De-energize both relay pairs. */
   s_abort = true;
   hw_write(phase_relay(RELAY_GROUP_B), false);
   hw_write(neutral_relay(RELAY_GROUP_B), false);
-  hw_write(neutral_relay(RELAY_GROUP_A), true);
-  hw_write(phase_relay(RELAY_GROUP_A), true);
+  hw_write(phase_relay(RELAY_GROUP_A), false);
+  hw_write(neutral_relay(RELAY_GROUP_A), false);
 
   /* Repeat after the transition exits in case it raced with the first writes.
    */
   xSemaphoreTake(s_switch_mutex, portMAX_DELAY);
   hw_write(phase_relay(RELAY_GROUP_B), false);
   hw_write(neutral_relay(RELAY_GROUP_B), false);
-  hw_write(neutral_relay(RELAY_GROUP_A), true);
-  hw_write(phase_relay(RELAY_GROUP_A), true);
+  hw_write(phase_relay(RELAY_GROUP_A), false);
+  hw_write(neutral_relay(RELAY_GROUP_A), false);
 
   xSemaphoreTake(s_data_mutex, portMAX_DELAY);
   for (int g = 0; g < RELAY_GROUP_COUNT; g++) {
     s_groups[g].is_on = false;
     s_groups[g].schedule.enabled = false;  // RAM only; NVS keeps the schedule
   }
+  s_manual_override = false;
   xSemaphoreGive(s_data_mutex);
 
   s_abort = false;
   xSemaphoreGive(s_switch_mutex);
-  ESP_LOGW(TAG, "Emergency stop: all relays OFF, schedules disabled");
+  ESP_LOGW(TAG, "Emergency stop: both load outputs OFF, schedules disabled");
 }
 
 esp_err_t relay_group_get_state(relay_group_t group, relay_group_state_t* out) {
@@ -233,31 +257,30 @@ static bool schedules_overlap(const relay_schedule_t* a,
 }
 
 static void relay_schedule_tick(void) {
-  time_t now = time(NULL);
-  struct tm lt;
-  localtime_r(&now, &lt);
-  uint16_t minute = (uint16_t)(lt.tm_hour * 60 + lt.tm_min);
+  uint16_t minute = current_minute_of_day();
 
   relay_group_state_t snap[RELAY_GROUP_COUNT];
-  xSemaphoreTake(s_data_mutex, portMAX_DELAY);
-  memcpy(snap, s_groups, sizeof(snap));
-  xSemaphoreGive(s_data_mutex);
-
   bool scheduled[RELAY_GROUP_COUNT];
   bool want_on[RELAY_GROUP_COUNT];
+  bool manual_override_active;
+  xSemaphoreTake(s_data_mutex, portMAX_DELAY);
+  memcpy(snap, s_groups, sizeof(snap));
   for (int g = 0; g < RELAY_GROUP_COUNT; g++) {
     scheduled[g] = snap[g].schedule.enabled;
     want_on[g] =
         scheduled[g] && relay_schedule_is_active(&snap[g].schedule, minute);
   }
-
-  /* 1. Groups whose window is over go OFF first. */
-  for (int g = 0; g < RELAY_GROUP_COUNT; g++) {
-    if (scheduled[g] && !want_on[g] && snap[g].is_on) {
-      ESP_LOGI(TAG, "Schedule: group %c window ended", group_name(g));
-      relay_group_set((relay_group_t)g, false);
+  if (s_manual_override) {
+    for (int g = 0; g < RELAY_GROUP_COUNT; g++) {
+      if (want_on[g] != s_manual_schedule_active[g]) {
+        s_manual_override = false;
+        ESP_LOGI(TAG, "Manual relay override cleared at a schedule transition");
+        break;
+      }
     }
   }
+  manual_override_active = s_manual_override;
+  xSemaphoreGive(s_data_mutex);
 
   bool conflict = want_on[RELAY_GROUP_A] && want_on[RELAY_GROUP_B];
   if (conflict) {
@@ -272,11 +295,21 @@ static void relay_schedule_tick(void) {
     s_schedule_conflict = false;
   }
 
+  if (manual_override_active) return;
+
+  /* 1. Groups whose window is over go OFF first. */
+  for (int g = 0; g < RELAY_GROUP_COUNT; g++) {
+    if (scheduled[g] && !want_on[g] && snap[g].is_on) {
+      ESP_LOGI(TAG, "Schedule: group %c window ended", group_name(g));
+      relay_group_set_internal((relay_group_t)g, false, false);
+    }
+  }
+
   /* 2. Open windows go ON; Group B's hardware interlock checks Group A. */
   for (int g = 0; g < RELAY_GROUP_COUNT; g++) {
     if (want_on[g] && !snap[g].is_on) {
       ESP_LOGI(TAG, "Schedule: group %c window started", group_name(g));
-      esp_err_t err = relay_group_set((relay_group_t)g, true);
+      esp_err_t err = relay_group_set_internal((relay_group_t)g, true, false);
       if (err != ESP_OK) {
         ESP_LOGW(TAG, "Schedule: group %c ON refused (%s)", group_name(g),
                  esp_err_to_name(err));
@@ -386,10 +419,16 @@ esp_err_t relay_init(void) {
   }
   memset(s_groups, 0, sizeof(s_groups));
 
-  /* Boot both loads OFF: energize A's reverse-wired relays, leave B OFF. */
+  /* Preload all active-low outputs OFF before enabling any GPIO as output. */
   for (int i = 0; i < RELAY_COUNT; i++) {
-    bool energized = i < 2;
-    gpio_set_level(RELAY_GPIOS[i], energized ? 0 : 1);
+    esp_err_t err = gpio_set_level(RELAY_GPIOS[i], 1);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Failed to preload safe level for relay %d", i + 1);
+      return err;
+    }
+  }
+
+  for (int i = 0; i < RELAY_COUNT; i++) {
     gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << RELAY_GPIOS[i]),
         .mode = GPIO_MODE_INPUT_OUTPUT,  // INPUT_OUTPUT so the level can be
@@ -403,12 +442,16 @@ esp_err_t relay_init(void) {
       ESP_LOGE(TAG, "gpio_config failed for relay %d", i + 1);
       return err;
     }
-    gpio_set_level(RELAY_GPIOS[i], energized ? 0 : 1);
+    err = gpio_set_level(RELAY_GPIOS[i], 1);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Failed to set safe level for relay %d", i + 1);
+      return err;
+    }
   }
 
   relay_nvs_load();
   xTaskCreate(relay_schedule_task, "relay_sched", 3072, NULL, 5, NULL);
-  ESP_LOGI(TAG, "Relay module initialized, all relays OFF");
+  ESP_LOGI(TAG, "Relay module initialized, both load outputs OFF");
   return ESP_OK;
 }
 
@@ -568,8 +611,9 @@ esp_err_t relay_handler_schedule(httpd_req_t* req) {
     cJSON_Delete(json);
     xSemaphoreTake(s_data_mutex, portMAX_DELAY);
     s_groups[g].schedule.enabled = false;
+    s_manual_override = false;
     xSemaphoreGive(s_data_mutex);
-    esp_err_t off = relay_group_set((relay_group_t)g, false);
+    esp_err_t off = relay_group_set_internal((relay_group_t)g, false, false);
     relay_nvs_save_group(g);
     if (off != ESP_OK) {
       return send_json_error(req, "409 Conflict", "Could not turn group off");
@@ -597,6 +641,7 @@ esp_err_t relay_handler_schedule(httpd_req_t* req) {
                            "Schedule overlaps with the other group");
   }
   s_groups[g].schedule = candidate;
+  s_manual_override = false;
   xSemaphoreGive(s_data_mutex);
 
   if (relay_nvs_save_group(g) != ESP_OK) {
