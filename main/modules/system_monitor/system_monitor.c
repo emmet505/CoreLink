@@ -9,6 +9,7 @@
 #include "esp_log.h"
 #include "esp_psram.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "led_status.h"
 
 // void system_monitor_print() {
