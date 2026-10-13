@@ -409,7 +409,6 @@ static esp_err_t status_api_handler(httpd_req_t* req) {
   cJSON_AddNumberToObject(root, "flash_size", status.flash_size);
   cJSON_AddNumberToObject(root, "uptime_seconds", status.uptime_seconds);
 
-
   cJSON_AddBoolToObject(root, "led_enabled", led_status_is_enabled());
   cJSON_AddBoolToObject(root, "sta_connected", wifi_is_sta_connected());
   char* json = cJSON_PrintUnformatted(root);

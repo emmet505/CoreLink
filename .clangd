@@ -1,2 +1,4 @@
-CompileFlags:
-    Remove: [-f*, -m*]
+BasedOnStyle: LLVM
+ColumnLimit: 80
+IndentWidth: 4
+BreakBeforeBraces: Attach
