@@ -322,7 +322,7 @@ LED_WARN_HEAP      = (1 << 0)
 
 **`/api/ota/firmware`**: از `esp_ota_ops` استفاده می‌کند. داده را به پارتیشن `ota_1` (یا `ota_0` بسته به حالت فعلی) می‌نویسد، سپس boot partition را تغییر می‌دهد و ریستارت می‌کند.
 
-**`/api/ota/webfs`**: پارتیشن LittleFS را پاک کرده و داده جدید را مستقیم با `esp_partition_write` می‌نویسد. سپس ریستارت می‌کند تا LittleFS دوباره mount شود.
+**`/api/ota/webfs`**: فایل‌های وب را روی اسلات غیرفعال LittleFS می‌نویسد و پس از اعتبارسنجی، اسلات فعال را تغییر می‌دهد.
 
 داده در هر دو حالت در بافرهای ۴KB دریافت و نوشته می‌شود.
 
@@ -383,7 +383,8 @@ LED_WARN_HEAP      = (1 << 0)
 | `phy_init` | data/phy | 0x11000 | 4KB | کالیبراسیون RF |
 | `ota_0` | app/ota_0 | 0x20000 | 1984KB | firmware فعال |
 | `ota_1` | app/ota_1 | 0x210000 | 1984KB | firmware به‌روزرسانی |
-| `webfs` | data/littlefs | 0x400000 | 4MB | فایل‌های وب |
+| `webfs_a` | data/littlefs | 0x400000 | 1MB | اسلات A فایل‌های وب |
+| `webfs_b` | data/littlefs | 0x500000 | 1MB | اسلات B فایل‌های وب |
 
 ---
 

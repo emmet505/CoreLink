@@ -8,4 +8,4 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(coreLink)
 
 # Package the web UI into the LittleFS partition so it is available at runtime.
-littlefs_create_partition_image(webfs "${CMAKE_CURRENT_SOURCE_DIR}/web" FLASH_IN_PROJECT)
+littlefs_create_partition_image(webfs_a "${CMAKE_CURRENT_SOURCE_DIR}/web" FLASH_IN_PROJECT)

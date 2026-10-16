@@ -4,6 +4,7 @@
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "string.h"
+#include "filesystem.h"
 
 static const char* TAG = "OTA";
 
@@ -90,14 +91,15 @@ esp_err_t ota_firmware_handler(httpd_req_t* req) {
   httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   ESP_LOGI(TAG, "OTA successful, rebooting...");
   vTaskDelay(pdMS_TO_TICKS(1000));
-  esp_restart();
 
   return ESP_OK;
 }
 
 esp_err_t ota_webfs_handler(httpd_req_t* req) {
+  int target = (filesystem_active_slot() == 0) ? 1 : 0;
   const esp_partition_t* partition = esp_partition_find_first(
-      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS, "webfs");
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS,
+      filesystem_slot_label(target));
   if (partition == NULL) {
     ESP_LOGE(TAG, "webfs partition not found");
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
@@ -157,6 +159,15 @@ esp_err_t ota_webfs_handler(httpd_req_t* req) {
   httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   ESP_LOGI(TAG, "WebFS OTA successful, rebooting...");
   vTaskDelay(pdMS_TO_TICKS(1000));
-  esp_restart();
+
+  /* قبل از سوییچ، ایمیج جدید را امتحان کن */
+  if (filesystem_verify_slot(target) != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
+                        "Image invalid - active UI unchanged");
+    return ESP_FAIL;
+  }
+  filesystem_set_boot_slot(target);
+
+  httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   return ESP_OK;
 }

@@ -17,6 +17,7 @@
 #include "pow_man.h"
 #include "time_handler.h"
 #include "wifi_config_store.h"
+#include "esp_ota_ops.h"
 
 static const char* TAG = "APP";
 
@@ -72,8 +73,9 @@ void app_main(void) {
   }
   ESP_LOGI(TAG, "WiFi ready (core %d)", xPortGetCoreID());
 
-  ESP_ERROR_CHECK(filesystem_init());
-  ESP_LOGI(TAG, "Filesystem ready (core %d)", xPortGetCoreID());
+  if (filesystem_init() != ESP_OK) {
+    ESP_LOGE(TAG, "No usable web UI - OTA endpoints still available");
+  }
 
   ESP_ERROR_CHECK(http_server_start());
   ESP_LOGI(TAG, "HTTP server ready (core %d)", xPortGetCoreID());
@@ -91,6 +93,7 @@ void app_main(void) {
 
   xTaskCreate(cpu_usage_task, "cpu_usage", 4096, NULL, tskIDLE_PRIORITY, NULL);
 
+  esp_ota_mark_app_valid_cancel_rollback();
 }
 
 static void heap_stress_task(void* pvParameters) {
