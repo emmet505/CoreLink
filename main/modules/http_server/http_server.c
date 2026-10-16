@@ -198,6 +198,7 @@ esp_err_t http_server_start(void) {
   config.max_open_sockets = 6;
   config.lru_purge_enable = true;
   config.max_uri_handlers = 32;
+  config.stack_size = 6144;
   config.uri_match_fn = httpd_uri_match_wildcard;
 
   ESP_LOGI(TAG, "Starting HTTP server");

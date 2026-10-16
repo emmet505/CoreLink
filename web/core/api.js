@@ -71,7 +71,16 @@ const API = {
           try { resolve(JSON.parse(xhr.responseText)); }
           catch { resolve({}); }
         } else {
-          reject(new Error(`HTTP ${xhr.status}`));
+          let message = xhr.responseText.trim();
+          try {
+            const payload = JSON.parse(message);
+            if (typeof payload?.error === 'string' && payload.error.trim()) {
+              message = payload.error;
+            }
+          } catch {
+            // Keep plain-text server errors as-is.
+          }
+          reject(new Error(message || `HTTP ${xhr.status} ${xhr.statusText}`));
         }
       };
 

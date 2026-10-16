@@ -1,10 +1,13 @@
 #include "ota_handler.h"
 
+#include <stdio.h>
+
+#include "filesystem.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "esp_system.h"
 #include "string.h"
-#include "filesystem.h"
 
 static const char* TAG = "OTA";
 
@@ -107,7 +110,13 @@ esp_err_t ota_webfs_handler(httpd_req_t* req) {
     return ESP_FAIL;
   }
   if (req->content_len == 0 || req->content_len > partition->size) {
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid image size");
+    ESP_LOGE(TAG, "Invalid WebFS image size: received=%lu capacity=%lu",
+             (unsigned long)req->content_len, (unsigned long)partition->size);
+    char error[96];
+    snprintf(error, sizeof(error),
+             "Invalid image size: received %lu bytes, maximum %lu bytes",
+             (unsigned long)req->content_len, (unsigned long)partition->size);
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, error);
     return ESP_FAIL;
   }
 
@@ -156,18 +165,26 @@ esp_err_t ota_webfs_handler(httpd_req_t* req) {
   }
 
   free(buffer);
-  httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
-  ESP_LOGI(TAG, "WebFS OTA successful, rebooting...");
-  vTaskDelay(pdMS_TO_TICKS(1000));
-
-  /* قبل از سوییچ، ایمیج جدید را امتحان کن */
-  if (filesystem_verify_slot(target) != ESP_OK) {
+  esp_err_t err = filesystem_verify_slot(target);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "WebFS image validation failed: %s", esp_err_to_name(err));
     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
                         "Image invalid - active UI unchanged");
     return ESP_FAIL;
   }
-  filesystem_set_boot_slot(target);
 
+  err = filesystem_set_boot_slot(target);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to activate WebFS slot: %s", esp_err_to_name(err));
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                        "Failed to activate WebFS image");
+    return ESP_FAIL;
+  }
+
+  httpd_resp_set_type(req, "application/json");
   httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+  ESP_LOGI(TAG, "WebFS OTA successful, rebooting...");
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  esp_restart();
   return ESP_OK;
 }
