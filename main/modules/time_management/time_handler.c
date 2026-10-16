@@ -7,6 +7,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_netif_sntp.h"
+#include "http_server/http_utils.h"
 #include "nvs.h"
 #include "sdkconfig.h"
 #include "time.h"
@@ -162,27 +163,8 @@ esp_err_t time_settings_get_handler(httpd_req_t* req) {
 }
 
 esp_err_t time_settings_post_handler(httpd_req_t* req) {
-  if (req->content_len == 0 || req->content_len > 512) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Invalid body size\"}");
-    return ESP_OK;
-  }
-
-  char body[513];
-  int received = httpd_req_recv(req, body, sizeof(body) - 1);
-  if (received <= 0) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Empty body\"}");
-    return ESP_OK;
-  }
-  body[received] = '\0';
-
-  cJSON* root = cJSON_Parse(body);
-  if (root == NULL) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Invalid JSON\"}");
-    return ESP_OK;
-  }
+  cJSON* root = http_read_json(req, 512);
+  if (root == NULL) return ESP_OK;
 
   time_settings_t settings;
   if (time_settings_load(&settings) != ESP_OK) {
@@ -265,35 +247,8 @@ esp_err_t time_sync_handler(httpd_req_t* req) {
     ESP_LOGW(TAG, "NTP unavailable, accepting client time fallback");
   }
 
-  if (req->content_len > TIME_REQ_LEN) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Body too large\"}");
-    return ESP_OK;
-  }
-
-  char* buf = malloc(req->content_len + 1);
-  if (buf == NULL) {
-    httpd_resp_send_500(req);
-    return ESP_FAIL;
-  }
-
-  int recieved = httpd_req_recv(req, buf, req->content_len);
-  if (recieved <= 0) {
-    free(buf);
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Empty body\"}");
-    return ESP_OK;
-  }
-  buf[recieved] = '\0';
-
-  cJSON* json = cJSON_Parse(buf);
-  free(buf);
-
-  if (json == NULL) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Invalid JSON\"}");
-    return ESP_OK;
-  }
+  cJSON* json = http_read_json(req, TIME_REQ_LEN);
+  if (json == NULL) return ESP_OK;
 
   cJSON* j_hour = cJSON_GetObjectItem(json, "hour");
   cJSON* j_minute = cJSON_GetObjectItem(json, "minute");

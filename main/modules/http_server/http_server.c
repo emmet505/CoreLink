@@ -4,12 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../../../.espressif/v6.0.1/esp-idf/components/esp_http_server/include/esp_http_server.h"
+#include "esp_http_server.h"
 #include "cJSON.h"
 #include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "http_utils.h"
 #include "led_handler.h"
 #include "led_status.h"
 #include "lwip/ip4_addr.h"
@@ -99,27 +100,8 @@ static esp_err_t sta_settings_get_handler(httpd_req_t* req) {
 }
 
 static esp_err_t sta_settings_post_handler(httpd_req_t* req) {
-  if (req->content_len > SETTINGS_BODY_MAX) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Body too large\"}");
-    return ESP_OK;
-  }
-
-  char body[SETTINGS_BODY_MAX + 1];
-  int received = httpd_req_recv(req, body, SETTINGS_BODY_MAX);
-  if (received <= 0) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Empty body\"}");
-    return ESP_OK;
-  }
-  body[received] = '\0';
-
-  cJSON* root = cJSON_Parse(body);
-  if (root == NULL) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return ESP_OK;
-  }
+  cJSON* root = http_read_json(req, SETTINGS_BODY_MAX);
+  if (root == NULL) return ESP_OK;
 
   cJSON* j_ssid = cJSON_GetObjectItem(root, "ssid");
   cJSON* j_password = cJSON_GetObjectItem(root, "password");
@@ -477,34 +459,8 @@ static esp_err_t settings_get_handler(httpd_req_t* req) {
 }
 // POST SETTINGS
 static esp_err_t settings_post_handler(httpd_req_t* req) {
-  /* 1. Guard against oversized body */
-  if (req->content_len > SETTINGS_BODY_MAX) {
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Body too large\"}");
-    return ESP_OK;
-  }
-
-  /* 2. Read raw body */
-  char body[SETTINGS_BODY_MAX + 1];
-  int received = httpd_req_recv(req, body, SETTINGS_BODY_MAX);
-  if (received <= 0) {
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Empty body\"}");
-    return ESP_OK;
-  }
-  body[received] = '\0';
-  ESP_LOGI(TAG, "POST /api/settings (%d bytes): %s", received, body);
-
-  /* 3. Parse JSON */
-  cJSON* root = cJSON_Parse(body);
-  if (!root) {
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"success\":false,\"error\":\"Invalid JSON\"}");
-    return ESP_OK;
-  }
+  cJSON* root = http_read_json(req, SETTINGS_BODY_MAX);
+  if (root == NULL) return ESP_OK;
 
   /* 4. Extract fields */
   cJSON* j_ssid = cJSON_GetObjectItem(root, "ssid");

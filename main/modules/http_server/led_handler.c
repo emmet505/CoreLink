@@ -2,45 +2,26 @@
 
 #include "cJSON.h"
 #include "esp_err.h"
+#include "http_utils.h"
 #include "led_status.h"
 
-#include "led_handler.h"
+#define LED_BODY_MAX 128
 
-#include "cJSON.h"
-#include "esp_err.h"
-#include "led_status.h"
-
+/* POST /api/led  {"enabled": true|false} */
 esp_err_t led_handler(httpd_req_t* req) {
-  if (req->content_len == 0 || req->content_len > 128) {
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid body size");
-    return ESP_OK;
-  }
+  cJSON* json = http_read_json(req, LED_BODY_MAX);
+  if (json == NULL) return ESP_OK;  // error response already sent
 
-  char buf[129];
-  int received = httpd_req_recv(req, buf, req->content_len);
-  if (received <= 0) {
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Empty body");
-    return ESP_OK;
-  }
-  buf[received] = '\0';
-
-  cJSON* json = cJSON_Parse(buf);
-  if (json == NULL) {
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-    return ESP_OK;
-  }
-
-  cJSON* enabled = cJSON_GetObjectItem(json, "enabled");
+  const cJSON* enabled = cJSON_GetObjectItem(json, "enabled");
   if (!cJSON_IsBool(enabled)) {
     cJSON_Delete(json);
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "enabled must be boolean");
-    return ESP_OK;
+    return http_send_json_error(req, "400 Bad Request",
+                                "enabled must be boolean");
   }
 
   led_status_enable(cJSON_IsTrue(enabled));
   cJSON_Delete(json);
 
-  httpd_resp_set_type(req, "application/json");
-  httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+  return http_send_json_ok(req);
   return ESP_OK;
 }

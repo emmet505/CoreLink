@@ -14,7 +14,19 @@ const API = {
       headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
     };
     const res = await fetch(API.BASE + path, { ...defaults, ...opts });
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    if (!res.ok) {
+      const body = await res.text();
+      let payload;
+      try {
+        payload = JSON.parse(body);
+      } catch {
+        // Keep the HTTP status fallback for non-JSON error responses.
+      }
+      const message = typeof payload?.error === 'string' && payload.error.trim()
+        ? payload.error
+        : `HTTP ${res.status} ${res.statusText}`;
+      throw new Error(message);
+    }
     return res.json();
   },
 

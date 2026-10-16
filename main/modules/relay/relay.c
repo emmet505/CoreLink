@@ -11,6 +11,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "http_utils.h"
 #include "nvs.h"
 #include "time_handler.h"
 
@@ -197,47 +198,13 @@ void relay_emergency_stop_all(void) {
 
 static esp_err_t send_error(httpd_req_t* req, const char* status,
                             const char* msg) {
-  char body[96];
-  snprintf(body, sizeof(body), "{\"success\":false,\"error\":\"%s\"}", msg);
-  httpd_resp_set_status(req, status);
-  httpd_resp_set_type(req, "application/json");
-  httpd_resp_sendstr(req, body);
-  return ESP_OK;
+  return http_send_json_error(req, status, msg);
 }
 
 static esp_err_t send_ok(httpd_req_t* req) {
-  httpd_resp_set_type(req, "application/json");
-  httpd_resp_sendstr(req, "{\"success\":true}");
-  return ESP_OK;
+  return http_send_json_ok(req);
 }
 
-/* Reads the whole body (httpd_req_recv may return it in pieces).
- * Returns NULL after sending an error response. */
-static cJSON* read_json_body(httpd_req_t* req) {
-  size_t len = req->content_len;
-  if (len == 0 || len > RELAY_BODY_MAX) {
-    send_error(req, "400 Bad Request", "Invalid body size");
-    return NULL;
-  }
-
-  char buf[RELAY_BODY_MAX + 1];
-  size_t got = 0;
-  int timeouts = 0;
-  while (got < len) {  // got : the number of bytes received so far
-    int rec = httpd_req_recv(req, buf + got, len - got);
-    if (rec == HTTPD_SOCK_ERR_TIMEOUT && ++timeouts < 3) continue;
-    if (rec <= 0) {
-      send_error(req, "400 Bad Request", "Receive failed");
-      return NULL;
-    }
-    got += (size_t)rec;
-  }
-  buf[got] = '\0';
-
-  cJSON* json = cJSON_Parse(buf);
-  if (json == NULL) send_error(req, "400 Bad Request", "Invalid JSON");
-  return json;
-}
 
 /* "relay": 1..4  ->  index 0..3 */
 static bool parse_relay(const cJSON* j, int* index) {
@@ -306,7 +273,7 @@ esp_err_t relay_get_state_handler(httpd_req_t* req) {
 
 /* POST /api/relay  {"relay":1..4,"state":true|false} */
 esp_err_t relay_handler_set(httpd_req_t* req) {
-  cJSON* json = read_json_body(req);
+  cJSON* json = http_read_json(req, RELAY_BODY_MAX);
   if (json == NULL) return ESP_OK;
 
   int i;  // i: relay index (0..3)
@@ -327,7 +294,7 @@ esp_err_t relay_handler_set(httpd_req_t* req) {
  *   {"relay":n,"enabled":false}
  *   {"relay":n,"enabled":true,"start":{hour,minute},"stop":{hour,minute}} */
 esp_err_t relay_handler_schedule(httpd_req_t* req) {
-  cJSON* json = read_json_body(req);
+  cJSON* json = http_read_json(req, RELAY_BODY_MAX);
   if (json == NULL) return ESP_OK;
 
   int i;

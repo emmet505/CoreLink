@@ -12,10 +12,10 @@ idf_component_register(
         "modules/power_manager/pow_man.c"
         "modules/time_management/time_handler.c"
         "modules/relay/relay.c"
+        "modules/http_server/http_utils.c"
 
     INCLUDE_DIRS
         "."
-        "config"
         "modules"
         "modules/wifi"
         "modules/http_server"

@@ -27,8 +27,7 @@ static void monitor_task(void* pvParameters) {
     time_print_current();
     // system_monitor_check_health();
     int clients = wifi_get_connected_clients();
-    ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients,
-             xPortGetCoreID());
+    ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients, xPortGetCoreID());
 
 
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -36,7 +35,7 @@ static void monitor_task(void* pvParameters) {
 }
 
 void app_main(void) {
-  ESP_LOGI(TAG, "Simple IoT House (core %d)");
+  ESP_LOGI(TAG, "Simple IoT House (core %d)", xPortGetCoreID());
 
   esp_err_t ret = nvs_flash_init();
 
@@ -50,34 +49,34 @@ void app_main(void) {
   
   
   ESP_ERROR_CHECK(ret);
-  ESP_LOGI(TAG, "NVS ready (core %d)");
+  ESP_LOGI(TAG, "NVS ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(reset_button_init());
-  ESP_LOGI(TAG, "Reset button ready (core %d)");
+  ESP_LOGI(TAG, "Reset button ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(esp_netif_init());
-  ESP_LOGI(TAG, "Network stack ready (core %d)");
+  ESP_LOGI(TAG, "Network stack ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(esp_event_loop_create_default());
-  ESP_LOGI(TAG, "Event loop ready (core %d)");
+  ESP_LOGI(TAG, "Event loop ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(relay_init());
 
   ESP_ERROR_CHECK(led_status_init());
-  ESP_LOGI(TAG, "LED status ready (core %d)");
+  ESP_LOGI(TAG, "LED status ready (core %d)", xPortGetCoreID());
 
   esp_err_t err = wifi_init();
   if (err != ESP_OK) {
     led_status_raise(LED_ERR_WIFI);
     ESP_LOGE(TAG, "WiFi init failed: %s", esp_err_to_name(err));
   }
-  ESP_LOGI(TAG, "WiFi ready (core %d)");
+  ESP_LOGI(TAG, "WiFi ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(filesystem_init());
-  ESP_LOGI(TAG, "Filesystem ready (core %d)");
+  ESP_LOGI(TAG, "Filesystem ready (core %d)", xPortGetCoreID());
 
   ESP_ERROR_CHECK(http_server_start());
-  ESP_LOGI(TAG, "HTTP server ready (core %d)");
+  ESP_LOGI(TAG, "HTTP server ready (core %d)", xPortGetCoreID());
 
   xTaskCreate(monitor_task, "monitor", 2048, NULL, tskIDLE_PRIORITY, NULL);
 
