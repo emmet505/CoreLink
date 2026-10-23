@@ -28,6 +28,7 @@ static void reset_button_task(void* arg) {
         nvs_flash_erase();
         nvs_flash_init();
         esp_restart();
+        
       }
 
     } else {

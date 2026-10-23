@@ -28,7 +28,7 @@ static void monitor_task(void* pvParameters) {
     time_print_current();
     // system_monitor_check_health();
     int clients = wifi_get_connected_clients();
-    ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients, xPortGetCoreID());
+    // ESP_LOGI(TAG, "Connected clients: %d | running on core %d", clients, xPortGetCoreID());
 
 
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -146,7 +146,7 @@ static void cpu_usage_task(void* arg) {
           if (b[j].xHandle != a[i].xHandle) continue;
           uint32_t idle = (uint32_t)(b[j].ulRunTimeCounter - a[i].ulRunTimeCounter);
           float usage = 100.0f - (idle * 100.0f / total);
-          ESP_LOGI("CPU", "%s: busy %.1f%%", a[i].pcTaskName, usage);
+          // ESP_LOGI("CPU", "%s: busy %.1f%%", a[i].pcTaskName, usage);
         }
       }
     }

@@ -43,9 +43,9 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     wifi_event_ap_staconnected_t* event =
         (wifi_event_ap_staconnected_t*)event_data;
     if (connected_clients < 8) connected_clients++;
-    ESP_LOGI(TAG, "Client connected [MAC: %02x:%02x:%02x:%02x:%02x:%02x]",
-             event->mac[0], event->mac[1], event->mac[2], event->mac[3],
-             event->mac[4], event->mac[5]);
+    // ESP_LOGI(TAG, "Client connected [MAC: %02x:%02x:%02x:%02x:%02x:%02x]",
+    //          event->mac[0], event->mac[1], event->mac[2], event->mac[3],
+    //          event->mac[4], event->mac[5]);
 
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_AP_STADISCONNECTED) {

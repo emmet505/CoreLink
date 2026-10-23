@@ -22,8 +22,7 @@ static int ota_recv(httpd_req_t* req, char* buf, int len) {
 }
 
 esp_err_t ota_firmware_handler(httpd_req_t* req) {
-  const esp_partition_t* update_partition =
-      esp_ota_get_next_update_partition(NULL);
+  const esp_partition_t* update_partition = esp_ota_get_next_update_partition(NULL);
   if (update_partition == NULL) {
     ESP_LOGE(TAG, "No OTA partition found");
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
@@ -33,8 +32,7 @@ esp_err_t ota_firmware_handler(httpd_req_t* req) {
   ESP_LOGI(TAG, "Writing to partition: %s", update_partition->label);
 
   esp_ota_handle_t ota_handle = 0;
-  esp_err_t err =
-      esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+  esp_err_t err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "esp_ota_begin failed: %s", esp_err_to_name(err));
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
@@ -54,8 +52,7 @@ esp_err_t ota_firmware_handler(httpd_req_t* req) {
   int remaining = req->content_len;
 
   while (remaining > 0) {
-    int chunk_size =
-        (remaining > OTA_BUFFER_SIZE) ? OTA_BUFFER_SIZE : remaining;
+    int chunk_size = (remaining > OTA_BUFFER_SIZE) ? OTA_BUFFER_SIZE : remaining;
     received = httpd_req_recv(req, buffer, chunk_size);
   if (req->content_len == 0 || req->content_len > update_partition->size) {
     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware size");
@@ -94,15 +91,14 @@ esp_err_t ota_firmware_handler(httpd_req_t* req) {
   httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   ESP_LOGI(TAG, "OTA successful, rebooting...");
   vTaskDelay(pdMS_TO_TICKS(1000));
-
+  esp_restart();
   return ESP_OK;
 }
 
 esp_err_t ota_webfs_handler(httpd_req_t* req) {
   int target = (filesystem_active_slot() == 0) ? 1 : 0;
   const esp_partition_t* partition = esp_partition_find_first(
-      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS,
-      filesystem_slot_label(target));
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS, filesystem_slot_label(target));
   if (partition == NULL) {
     ESP_LOGE(TAG, "webfs partition not found");
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,

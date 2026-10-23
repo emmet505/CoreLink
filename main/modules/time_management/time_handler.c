@@ -11,9 +11,11 @@
 #include "nvs.h"
 #include "sdkconfig.h"
 #include "time.h"
+#include "wifi.h"
 #define TIME_REQ_LEN 256
 #define NTP_WAIT_TIMEOUT_MS 3000
-
+#define MIN_VALID_EPOCH 1704067200 /* 2024-01-01 */
+#define MAX_VALID_EPOCH 4102444800 /* 2100-01-01 */
 #ifndef CONFIG_TIMEZONE
 #define CONFIG_TIMEZONE "IRST-3:30"
 #endif
@@ -39,6 +41,11 @@ typedef struct {
   char server[3][64];
   char timezone[64];
 } time_settings_t;
+
+static void apply_timezone(const char* tz) {
+  setenv("TZ", tz, 1);
+  tzset();
+}
 
 static time_settings_t s_time_settings;
 
@@ -217,8 +224,8 @@ void time_print_current(void) {
   const char* source = !s_time_available
                            ? "not synchronized"
                            : (s_ntp_synced ? "NTP" : "client fallback");
-  ESP_LOGI(TAG, "Current time: %s (%s)", s_time_available ? buf : "unavailable",
-           source);
+  // ESP_LOGI(TAG, "Current time: %s (%s)", s_time_available ? buf : "unavailable",
+  //          source);
 }
 
 void time_get_str(char* buf, size_t len) {
@@ -230,73 +237,43 @@ void time_get_str(char* buf, size_t len) {
 }
 
 esp_err_t time_sync_handler(httpd_req_t* req) {
-  if (s_ntp_synced) {
-    httpd_resp_set_status(req, "409 Conflict");
-    httpd_resp_sendstr(req, "{\"error\":\"NTP time is already available\"}");
-    return ESP_OK;
+  if (s_time_available) {
+    return http_send_json_error(req, "409 Conflict", "Time already set");
   }
 
-  if (s_ntp_started) {
-    esp_err_t ntp_err =
-        esp_netif_sntp_sync_wait(pdMS_TO_TICKS(NTP_WAIT_TIMEOUT_MS));
-    if (ntp_err == ESP_OK || s_ntp_synced) {
-      httpd_resp_set_status(req, "409 Conflict");
-      httpd_resp_sendstr(req, "{\"error\":\"NTP time is available\"}");
-      return ESP_OK;
+  if (s_ntp_started && wifi_is_sta_connected()) {
+    esp_netif_sntp_sync_wait(pdMS_TO_TICKS(NTP_WAIT_TIMEOUT_MS));
+    if (s_time_available) {
+      return http_send_json_error(req, "409 Conflict", "NTP time available");
     }
-    ESP_LOGW(TAG, "NTP unavailable, accepting client time fallback");
+    ESP_LOGW(TAG, "NTP unavailable, accepting first client time");
   }
 
   cJSON* json = http_read_json(req, TIME_REQ_LEN);
   if (json == NULL) return ESP_OK;
 
-  cJSON* j_hour = cJSON_GetObjectItem(json, "hour");
-  cJSON* j_minute = cJSON_GetObjectItem(json, "minute");
-  cJSON* j_second = cJSON_GetObjectItem(json, "second");
-
-  if (!cJSON_IsNumber(j_hour) || !cJSON_IsNumber(j_minute) ||
-      !cJSON_IsNumber(j_second)) {
+  const cJSON* j_epoch = cJSON_GetObjectItem(json, "epoch");
+  if (!cJSON_IsNumber(j_epoch)) {
     cJSON_Delete(json);
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Missing time fields\"}");
-    return ESP_OK;
+    return http_send_json_error(req, "400 Bad Request", "Missing epoch");
   }
-
-  int hour = (int)cJSON_GetNumberValue(j_hour);
-  int minute = (int)cJSON_GetNumberValue(j_minute);
-  int second = (int)cJSON_GetNumberValue(j_second);
+  double epoch = cJSON_GetNumberValue(j_epoch);
   cJSON_Delete(json);
 
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 ||
-      second > 59) {
-    httpd_resp_set_status(req, "400 Bad Request");
-    httpd_resp_sendstr(req, "{\"error\":\"Invalid time values\"}");
-    return ESP_OK;
+  if (epoch < MIN_VALID_EPOCH || epoch > MAX_VALID_EPOCH) {
+    return http_send_json_error(req, "400 Bad Request", "Invalid epoch");
   }
 
-  time_t now = time(NULL);
-  struct tm t = {0};
-  localtime_r(&now, &t);
-  t.tm_hour = hour;
-  t.tm_min = minute;
-  t.tm_sec = second;
+  time_settings_t settings;
+  time_settings_load(&settings);
+  apply_timezone(settings.timezone);
 
-  time_t timestamp = mktime(&t);
-  if (timestamp == (time_t)-1) {
-    httpd_resp_send_500(req);
-    return ESP_FAIL;
-  }
-
-  struct timeval tv = {.tv_sec = timestamp, .tv_usec = 0};
+  struct timeval tv = {.tv_sec = (time_t)epoch, .tv_usec = 0};
   if (settimeofday(&tv, NULL) != 0) {
     httpd_resp_send_500(req);
     return ESP_FAIL;
   }
   s_time_available = true;
-  ESP_LOGI(TAG, "Time set from client fallback: %02d:%02d:%02d", hour, minute,
-           second);
-
-  httpd_resp_set_type(req, "application/json");
-  httpd_resp_sendstr(req, "{\"success\":true}");
-  return ESP_OK;
+  ESP_LOGI(TAG, "Time set from client (epoch %lld)", (long long)epoch);
+  return http_send_json_ok(req);
 }

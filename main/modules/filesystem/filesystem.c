@@ -35,8 +35,7 @@ esp_err_t filesystem_set_boot_slot(int slot) {
   return err;
 }
 
-/* mount + چک وجود index.html؛ در شکست، mount را برمی‌گرداند
- */
+
 static esp_err_t mount_slot(int slot, const char* base) {
   esp_vfs_littlefs_conf_t conf = {
       .base_path = base,

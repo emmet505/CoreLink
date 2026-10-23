@@ -14,26 +14,15 @@ let _pages          = null;
 
 
 async function syncDeviceTime() {
-  //if (sessionStorage.getItem('time_synced')) return;
-
   try {
     const status = await API.getStatus();
-    if (status.sta_connected) {
-      console.log('[time] STA connected; using NTP time');
-      return;
-    }
+    if (status.sta_connected || status.time_synced) return;
 
-    const now = new Date();
     await API.request('/api/time', {
       method: 'POST',
-      body: JSON.stringify({
-        hour:   now.getHours(),
-        minute: now.getMinutes(),
-        second: now.getSeconds(),
-      }),
+      body: JSON.stringify({ epoch: Math.floor(Date.now() / 1000) }),
     });
-    sessionStorage.setItem('time_synced', '1');
-    console.log('[time] fallback sync sent; STA is unavailable');
+    console.log('[time] device time set from browser');
   } catch (err) {
     console.warn('[time] sync failed:', err.message);
   }
