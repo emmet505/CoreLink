@@ -35,7 +35,6 @@ esp_err_t filesystem_set_boot_slot(int slot) {
   return err;
 }
 
-
 static esp_err_t mount_slot(int slot, const char* base) {
   esp_vfs_littlefs_conf_t conf = {
       .base_path = base,
@@ -67,7 +66,7 @@ esp_err_t filesystem_init(void) {
     int slot = (preferred + k) & 1;
     if (mount_slot(slot, "/littlefs") == ESP_OK) {
       s_active = slot;
-      if (k == 1) filesystem_set_boot_slot(slot); /* slot اصلی خراب بود */
+      if (k == 1) filesystem_set_boot_slot(slot);
       ESP_LOGI(TAG, "Web UI from %s", LABELS[slot]);
       return ESP_OK;
     }

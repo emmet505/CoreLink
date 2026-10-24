@@ -88,9 +88,9 @@ async function handleUpdate() {
     if (!ok) allOk = false;
   }
 
-  Update.btnUpdate.disabled = false;
-
   if (allOk) {
+
+    try { await API.reboot(); } catch (e) { /*reboting */}
     setOnline(false);
     showToast('Update complete — device is rebooting…', 'success', 8000);
     await showInfoModal(

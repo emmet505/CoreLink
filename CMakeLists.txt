@@ -9,3 +9,4 @@ project(coreLink)
 
 # Package the web UI into the LittleFS partition so it is available at runtime.
 littlefs_create_partition_image(webfs_a "${CMAKE_CURRENT_SOURCE_DIR}/web" FLASH_IN_PROJECT)
+littlefs_create_partition_image(webfs_b "${CMAKE_CURRENT_SOURCE_DIR}/web" FLASH_IN_PROJECT)

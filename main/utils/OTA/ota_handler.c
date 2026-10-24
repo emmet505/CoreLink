@@ -1,12 +1,13 @@
 #include "ota_handler.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "filesystem.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_system.h"
+#include "filesystem.h"
 #include "string.h"
 
 static const char* TAG = "OTA";
@@ -22,42 +23,56 @@ static int ota_recv(httpd_req_t* req, char* buf, int len) {
 }
 
 esp_err_t ota_firmware_handler(httpd_req_t* req) {
-  const esp_partition_t* update_partition = esp_ota_get_next_update_partition(NULL);
+  const esp_partition_t* update_partition =
+      esp_ota_get_next_update_partition(NULL);
   if (update_partition == NULL) {
     ESP_LOGE(TAG, "No OTA partition found");
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
                         "No OTA partition");
     return ESP_FAIL;
   }
+
+  /* سایز قبل از هر کاری چک می‌شود */
+  if (req->content_len == 0 || req->content_len > update_partition->size) {
+    ESP_LOGE(TAG, "Invalid firmware size: %lu (max %lu)",
+             (unsigned long)req->content_len,
+             (unsigned long)update_partition->size);
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware size");
+    return ESP_FAIL;
+  }
   ESP_LOGI(TAG, "Writing to partition: %s", update_partition->label);
 
+  char* buffer = malloc(OTA_BUFFER_SIZE);
+  if (buffer == NULL) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No memory");
+    return ESP_FAIL;
+  }
+
   esp_ota_handle_t ota_handle = 0;
-  esp_err_t err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+  esp_err_t err =
+      esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "esp_ota_begin failed: %s", esp_err_to_name(err));
+    free(buffer);
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
                         "OTA begin failed");
     return ESP_FAIL;
   }
 
-  char* buffer = malloc(OTA_BUFFER_SIZE);
-  if (buffer == NULL) {
-    ESP_LOGE(TAG, "Failed to allocate buffer");
-    esp_ota_abort(ota_handle);
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No memory");
-    return ESP_FAIL;
-  }
-
-  int received = 0;
   int remaining = req->content_len;
-
   while (remaining > 0) {
-    int chunk_size = (remaining > OTA_BUFFER_SIZE) ? OTA_BUFFER_SIZE : remaining;
-    received = httpd_req_recv(req, buffer, chunk_size);
-  if (req->content_len == 0 || req->content_len > update_partition->size) {
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware size");
-    return ESP_FAIL;
-  }
+    int chunk_size =
+        (remaining > OTA_BUFFER_SIZE) ? OTA_BUFFER_SIZE : remaining;
+    int received = ota_recv(req, buffer, chunk_size);
+    if (received <= 0) {
+      ESP_LOGE(TAG, "Receive failed (%d)", received);
+      free(buffer);
+      esp_ota_abort(ota_handle);
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
+                          "Receive failed");
+      return ESP_FAIL;
+    }
+
     err = esp_ota_write(ota_handle, buffer, received);
     if (err != ESP_OK) {
       ESP_LOGE(TAG, "esp_ota_write failed: %s", esp_err_to_name(err));
@@ -66,39 +81,36 @@ esp_err_t ota_firmware_handler(httpd_req_t* req) {
       httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Write failed");
       return ESP_FAIL;
     }
-
     remaining -= received;
   }
-
   free(buffer);
 
   err = esp_ota_end(ota_handle);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "esp_ota_end failed: %s", esp_err_to_name(err));
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA end failed");
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware image invalid");
     return ESP_FAIL;
   }
 
   err = esp_ota_set_boot_partition(update_partition);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "esp_ota_set_boot_partition failed: %s",
-             esp_err_to_name(err));
+    ESP_LOGE(TAG, "set_boot_partition failed: %s", esp_err_to_name(err));
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
                         "Set boot partition failed");
     return ESP_FAIL;
   }
 
+  ESP_LOGI(TAG, "Firmware staged; reboot to apply");
+  httpd_resp_set_type(req, "application/json");
   httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
-  ESP_LOGI(TAG, "OTA successful, rebooting...");
-  vTaskDelay(pdMS_TO_TICKS(1000));
-  esp_restart();
   return ESP_OK;
 }
 
 esp_err_t ota_webfs_handler(httpd_req_t* req) {
   int target = (filesystem_active_slot() == 0) ? 1 : 0;
   const esp_partition_t* partition = esp_partition_find_first(
-      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS, filesystem_slot_label(target));
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_LITTLEFS,
+      filesystem_slot_label(target));
   if (partition == NULL) {
     ESP_LOGE(TAG, "webfs partition not found");
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
@@ -159,8 +171,8 @@ esp_err_t ota_webfs_handler(httpd_req_t* req) {
     offset += received;
     remaining -= received;
   }
-
   free(buffer);
+
   esp_err_t err = filesystem_verify_slot(target);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "WebFS image validation failed: %s", esp_err_to_name(err));
@@ -177,10 +189,8 @@ esp_err_t ota_webfs_handler(httpd_req_t* req) {
     return ESP_FAIL;
   }
 
+  ESP_LOGI(TAG, "WebFS staged; reboot to apply");
   httpd_resp_set_type(req, "application/json");
   httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
-  ESP_LOGI(TAG, "WebFS OTA successful, rebooting...");
-  vTaskDelay(pdMS_TO_TICKS(1000));
-  esp_restart();
   return ESP_OK;
 }
